@@ -1,29 +1,27 @@
 # Echoic
 
-Cross-platform AI Text-to-Speech (TTS) desktop application built with Kotlin Multiplatform + Compose Desktop.
+[English](#english) | [中文](#中文)
 
-跨平台 AI 语音合成（TTS）桌面应用，基于 Kotlin Multiplatform + Compose Desktop 构建。
+---
+
+<a name="english"></a>
+
+## English
+
+Cross-platform AI Text-to-Speech desktop application built with Kotlin Multiplatform + Compose Desktop.
 
 [![Build macOS DMG](https://github.com/XiaBiXiang/Echoic/actions/workflows/build-dmg.yml/badge.svg)](https://github.com/XiaBiXiang/Echoic/actions/workflows/build-dmg.yml)
 [![Latest Release](https://img.shields.io/github/v/release/XiaBiXiang/Echoic)](https://github.com/XiaBiXiang/Echoic/releases/latest)
 
-## Features
+### Features
 
-- **Cloud TTS** — Integrated with 11 cloud providers, generate high-quality speech with one click
+- **Cloud TTS** — 11 cloud providers integrated, one-click high-quality speech generation
 - **Local Models** — Download and run TTS models offline
 - **Multi-format Output** — MP3, WAV, OPUS, FLAC, AAC
-- **Bilingual UI** — English / Chinese interface
-- **Dark Mode** — Light and dark theme support
+- **Bilingual UI** — English / Chinese
+- **Dark Mode** — Light and dark themes
 
-## 功能特性
-
-- **云端 TTS** — 集成 11 家云端语音合成 API，一键生成高质量语音
-- **本地模型** — 支持下载和运行本地 TTS 模型，离线可用
-- **多格式输出** — 支持 MP3、WAV、OPUS、FLAC、AAC 格式
-- **中英双语** — UI 支持中文和英文切换
-- **深色模式** — 支持亮色/暗色主题
-
-## Cloud Providers
+### Cloud Providers
 
 | Provider | Models |
 |----------|--------|
@@ -31,59 +29,40 @@ Cross-platform AI Text-to-Speech (TTS) desktop application built with Kotlin Mul
 | Google Cloud | WaveNet / Neural2 |
 | Azure | Microsoft Neural Voices |
 | ElevenLabs | Ultra-realistic AI voices |
-| Baidu | 百度语音合成 |
-| Tencent | 腾讯云语音合成 |
-| Aliyun | 阿里云 NLS |
+| Baidu | Speech synthesis |
+| Tencent | Speech synthesis |
+| Aliyun | NLS speech synthesis |
 | Fish Audio | High-quality synthesis |
 | MiniMax | Speech-01 |
 | Zhipu AI | GLM TTS (OpenAI-compatible) |
 | Volcano Engine | ByteDance TTS |
+| Edge TTS | Free Microsoft voices |
 
-## Local Models
+### Local Models
 
 | Model | Size | Description |
 |-------|------|-------------|
-| Piper | 60 MB | Lightweight ONNX neural TTS |
+| Kokoro | 115 MB | Lightweight ONNX neural TTS |
 | Sherpa-ONNX | 115 MB | Cross-platform speech toolkit |
-| eSpeak NG | 10 MB | Multilingual formant synthesis |
 | VoxCPM | 4700 MB | Zero-shot voice cloning |
-| CosyVoice | 3200 MB | Multilingual TTS (Alibaba) |
-| ChatTTS | 1200 MB | Conversational speech |
-| GPT-SoVITS | 2000 MB | Few-shot voice cloning |
+| VibeVoice | 3200 MB | Multilingual TTS |
 
-## Tech Stack
+### Tech Stack
 
 - Kotlin 2.1 + Kotlin Multiplatform
 - Compose Desktop (Material 3)
 - Ktor HTTP client
 - kotlinx.serialization
+- Sherpa-ONNX for local TTS
 - JVM — macOS / Windows / Linux
 
-## Getting Started
+### Usage
 
-Download the latest DMG from [Releases](https://github.com/XiaBiXiang/Echoic/releases), or build from source:
-
-```bash
-git clone https://github.com/XiaBiXiang/Echoic.git
-cd Echoic
-./gradlew :composeApp:run
-```
-
-Requires JDK 17+.
-
-## 使用方式
-
-1. 启动应用后，进入 **Providers** 页面配置 API Key
-2. 在 **Generate** 页面选择云端提供商或本地模型
-3. 输入文本，点击生成即可获得语音
-
-## Usage
-
-1. Go to **Providers** to configure your API keys
+1. Open **Providers** to configure API keys
 2. Select a cloud provider or local model in **Generate**
 3. Enter text and click generate
 
-## Project Structure
+### Project Structure
 
 ```
 echoic-kmp/
@@ -91,13 +70,92 @@ echoic-kmp/
 │   └── src/
 │       ├── commonMain/  # Shared UI code
 │       └── desktopMain/ # JVM platform implementation
-├── shared/              # Business logic module
+├── shared/              # Business logic
 │   └── src/
-│       ├── commonMain/  # TTS services, model definitions, download manager
-│       └── desktopMain/ # JVM platform (audio, Sherpa-ONNX JNI)
+│       ├── commonMain/  # TTS services, models, download manager
+│       └── desktopMain/ # JVM platform, Sherpa-ONNX JNI
 └── docs/                # Documentation
 ```
 
-## License
+### License
+
+MIT License
+
+---
+
+<a name="中文"></a>
+
+## 中文
+
+跨平台 AI 语音合成桌面应用，基于 Kotlin Multiplatform + Compose Desktop 构建。
+
+[![Build macOS DMG](https://github.com/XiaBiXiang/Echoic/actions/workflows/build-dmg.yml/badge.svg)](https://github.com/XiaBiXiang/Echoic/actions/workflows/build-dmg.yml)
+[![Latest Release](https://img.shields.io/github/v/release/XiaBiXiang/Echoic)](https://github.com/XiaBiXiang/Echoic/releases/latest)
+
+### 功能特性
+
+- **云端 TTS** — 集成 11 家云端语音合成 API，一键生成高质量语音
+- **本地模型** — 支持下载和运行本地 TTS 模型，离线可用
+- **多格式输出** — 支持 MP3、WAV、OPUS、FLAC、AAC 格式
+- **中英双语** — UI 支持中文和英文切换
+- **深色模式** — 支持亮色/暗色主题
+
+### 云端提供商
+
+| 提供商 | 说明 |
+|--------|------|
+| OpenAI | TTS-1 / TTS-1 HD |
+| Google Cloud | WaveNet / Neural2 |
+| Azure | Microsoft Neural Voices |
+| ElevenLabs | 超逼真 AI 语音 |
+| Baidu | 百度语音合成 |
+| Tencent | 腾讯云语音合成 |
+| Aliyun | 阿里云 NLS 语音合成 |
+| Fish Audio | 高质量语音合成 |
+| MiniMax | Speech-01 |
+| Zhipu AI | 智谱 GLM TTS（OpenAI 兼容） |
+| Volcano Engine | 火山引擎（字节跳动） |
+| Edge TTS | 免费 Microsoft 语音 |
+
+### 本地模型
+
+| 模型 | 大小 | 说明 |
+|------|------|------|
+| Kokoro | 115 MB | 轻量级 ONNX 神经网络 TTS |
+| Sherpa-ONNX | 115 MB | 跨平台语音工具包 |
+| VoxCPM | 4700 MB | 零样本声音克隆 |
+| VibeVoice | 3200 MB | 多语言 TTS |
+
+### 技术栈
+
+- Kotlin 2.1 + Kotlin Multiplatform
+- Compose Desktop (Material 3)
+- Ktor HTTP 客户端
+- kotlinx.serialization
+- Sherpa-ONNX 本地 TTS
+- JVM — macOS / Windows / Linux
+
+### 使用方式
+
+1. 进入 **Providers** 页面配置 API Key
+2. 在 **Generate** 页面选择云端提供商或本地模型
+3. 输入文本，点击生成即可获得语音
+
+### 项目结构
+
+```
+echoic-kmp/
+├── composeApp/          # Compose Desktop UI
+│   └── src/
+│       ├── commonMain/  # 共享 UI 代码
+│       └── desktopMain/ # JVM 桌面平台实现
+├── shared/              # 业务逻辑模块
+│   └── src/
+│       ├── commonMain/  # TTS 服务、模型定义、下载管理
+│       └── desktopMain/ # JVM 平台实现、Sherpa-ONNX JNI
+└── docs/                # 文档
+```
+
+### 许可证
 
 MIT License
