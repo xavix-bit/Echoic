@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,7 +42,7 @@ fun SettingsOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.4f))
+                .background(Color.Black.copy(alpha = 0.46f))
                 .clickable(onClick = onDismiss)
                 .onKeyEvent { keyEvent ->
                     if (keyEvent.key == Key.Escape) {
@@ -56,12 +57,15 @@ fun SettingsOverlay(
                 modifier = Modifier
                     .widthIn(min = 380.dp, max = 480.dp)
                     .heightIn(max = 600.dp)
-                    .clickable(enabled = false) {},
-                shape = RoundedCornerShape(16.dp),
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) {},
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     // Header
@@ -70,12 +74,19 @@ fun SettingsOverlay(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = strings.settingsTitle,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(
+                                text = strings.settingsTitle,
+                                fontSize = 19.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = strings.general,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
                             Text("✕", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -133,12 +144,79 @@ fun SettingsOverlay(
                             }
                         }
 
-                        // Footer
-                        Text(
-                            text = strings.version,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        // Data Management
+                        SettingsSection(title = if (configData.language == "zh") "数据管理" else "Data") {
+                            SettingRow(
+                                title = if (configData.language == "zh") "存储位置" else "Storage",
+                                subtitle = "~/.echoic/",
+                            ) {
+                                OutlinedButton(
+                                    onClick = { openUrl(com.echoic.shared.platform.platformHomeDirectory() + "/.echoic") },
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                ) {
+                                    Text(
+                                        if (configData.language == "zh") "打开" else "Open",
+                                        fontSize = 11.sp,
+                                    )
+                                }
+                            }
+
+                            SettingRow(
+                                title = if (configData.language == "zh") "重置配置" else "Reset Config",
+                                subtitle = if (configData.language == "zh") "将所有设置恢复为默认值" else "Restore all settings to defaults",
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        config.reset()
+                                        onUpdate()
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.error,
+                                    ),
+                                ) {
+                                    Text(
+                                        if (configData.language == "zh") "重置" else "Reset",
+                                        fontSize = 11.sp,
+                                    )
+                                }
+                            }
+                        }
+
+                        // About
+                        SettingsSection(title = if (configData.language == "zh") "关于" else "About") {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        strings.version,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Text(
+                                        "Kotlin Multiplatform • Compose Desktop",
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+
+                            OutlinedButton(
+                                onClick = { openUrl("https://github.com/ASleak/echoic-kmp") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp),
+                            ) {
+                                Text("GitHub ↗", fontSize = 12.sp)
+                            }
+                        }
+
+                        Spacer(Modifier.height(4.dp))
                     }
                 }
             }
@@ -160,9 +238,9 @@ private fun SettingsSection(title: String, content: @Composable ColumnScope.() -
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f))
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             content()
         }
@@ -180,7 +258,7 @@ private fun SettingRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
             Text(subtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -197,7 +275,7 @@ private fun SegmentedPicker(
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.86f))
             .padding(2.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -209,7 +287,7 @@ private fun SegmentedPicker(
                 color = if (option == selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(if (option == selected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface)
+                    .background(if (option == selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
                     .clickable { onSelect(option) }
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             )

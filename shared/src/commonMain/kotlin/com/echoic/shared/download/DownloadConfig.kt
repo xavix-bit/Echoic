@@ -3,116 +3,140 @@ package com.echoic.shared.download
 import com.echoic.shared.model.LocalTTSProvider
 
 /**
- * 下载配置
- * 定义各 TTS Provider 需要下载的文件列表，并提供生成完整下载 URL 的工具方法
+ * A single file that belongs to a local model installation.
+ *
+ * [relativePath] is preserved under the target directory. This matters for
+ * repositories such as Kokoro where voice files live under `voices/`.
+ */
+data class DownloadFile(
+    val relativePath: String,
+    val url: String,
+    val sizeBytes: Long? = null,
+)
+
+data class ModelRepository(
+    val hostBaseUrl: String,
+    val repoId: String,
+)
+
+/**
+ * Download metadata for local TTS models.
+ *
+ * The installer prefers live HuggingFace/hf-mirror repository metadata and
+ * falls back to these curated manifests when the metadata API is unavailable.
  */
 object DownloadConfig {
-    // Piper TTS 下载文件列表（相对于 resolve/main 的路径）
-    val PIPER_FILES = listOf(
-        "zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx",
-        "zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx.json",
-    )
+    // Kokoro ONNX 模型来自 sherpa-onnx releases（tar.gz 归档）
+    // 内含: model.onnx, voices.bin, tokens.txt, espeak-ng-data/, lexicon-*.txt, dict/
+    private val kokoroReleaseUrl =
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.gz"
 
-    // Sherpa-ONNX 下载文件列表
-    val SHERPA_FILES = listOf(
+    private val sherpaFiles = listOf(
         "vits-zh-hf-fanchen-unity.onnx",
         "tokens.txt",
     )
 
-    // eSpeak NG 下载文件列表
-    val ESPEAK_FILES = listOf(
-        "espeak-ng.msi",
-    )
-
-    // VoxCPM2 下载文件列表 (~4.7GB)
-    val VOXCPM_FILES = listOf(
+    private val voxcpmFiles = listOf(
         "model.safetensors",
         "audiovae.pth",
+        "config.json",
+        "special_tokens_map.json",
+        "tokenization_voxcpm2.py",
+        "tokenizer.json",
+        "tokenizer_config.json",
     )
 
-    // ChatTTS 下载文件列表 (~1.2GB)
-    val CHATTTS_FILES = listOf(
-        "asset/DVAE.safetensors",
-        "asset/Decoder.safetensors",
-        "asset/Embed.safetensors",
-        "asset/gpt/model.safetensors",
-        "asset/Vocos.safetensors",
-    )
-
-    // CosyVoice2 下载文件列表 (~3.2GB)
-    val COSYVOICE_FILES = listOf(
-        "llm.pt",
-        "flow.pt",
-        "hift.pt",
-        "campplus.onnx",
-        "speech_tokenizer_v2.onnx",
-        "flow.decoder.estimator.fp32.onnx",
-    )
-
-    // GPT-SoVITS 下载文件列表
-    val GPTSOVITS_FILES = listOf(
-        "s2G488k.pth",
-        "s2D488k.pth",
-    )
-
-    /**
-     * 获取完整的下载 URL 列表
-     *
-     * @param provider TTS 提供商
-     * @param baseUrl 基础 URL（HuggingFace 仓库页面链接或 hf-mirror 页面链接或 GitHub releases 链接）
-     * @return 完整的文件下载 URL 列表
-     */
-    fun getDownloadUrls(provider: LocalTTSProvider, baseUrl: String): List<String> {
-        // 如果是 GitHub releases 的下载链接，直接返回（单文件）
-        if (baseUrl.contains("/releases/download/")) {
-            return listOf(baseUrl)
+    fun getFallbackDownloadFiles(
+        provider: LocalTTSProvider,
+        repositoryUrl: String,
+    ): List<DownloadFile> {
+        if (repositoryUrl.contains("/releases/download/")) {
+            val fileName = repositoryUrl.substringAfterLast("/").substringBefore("?")
+            return listOf(DownloadFile(relativePath = fileName, url = repositoryUrl))
         }
+        extractDirectResolvePath(repositoryUrl)?.let { relativePath ->
+            return listOf(
+                DownloadFile(
+                    relativePath = relativePath,
+                    url = repositoryUrl,
+                )
+            )
+        }
+
+        val repository = parseHuggingFaceRepository(repositoryUrl)
+            ?: return listOf(
+                DownloadFile(
+                    relativePath = repositoryUrl.substringAfterLast("/").substringBefore("?"),
+                    url = repositoryUrl,
+                )
+            )
 
         val files = when (provider) {
-            LocalTTSProvider.PIPER -> PIPER_FILES
-            LocalTTSProvider.SHERPA -> SHERPA_FILES
-            LocalTTSProvider.ESPEAK -> ESPEAK_FILES
-            LocalTTSProvider.VOXCPM -> VOXCPM_FILES
-            LocalTTSProvider.CHATTTS -> CHATTTS_FILES
-            LocalTTSProvider.COSYVOICE -> COSYVOICE_FILES
-            LocalTTSProvider.GPTSOVITS -> GPTSOVITS_FILES
+            LocalTTSProvider.KOKORO -> {
+                // Kokoro 从 sherpa-onnx releases 下载归档包
+                return listOf(
+                    DownloadFile(
+                        relativePath = "kokoro-multi-lang-v1_0.tar.gz",
+                        url = kokoroReleaseUrl,
+                    )
+                )
+            }
+            LocalTTSProvider.SHERPA -> sherpaFiles
+            LocalTTSProvider.VOXCPM -> voxcpmFiles
+            LocalTTSProvider.VIBEVOICE -> emptyList() // VibeVoice 通过 Python 环境独立安装
         }
 
-        // 提取仓库基础 URL（到 resolve/main 之前的部分）
-        val repoUrl = extractRepoBaseUrl(baseUrl)
-
-        return files.map { file ->
-            "$repoUrl/resolve/main/$file"
+        return files.map { relativePath ->
+            DownloadFile(
+                relativePath = relativePath,
+                url = buildResolveUrl(repository, relativePath),
+            )
         }
     }
 
-    /**
-     * 从给定 URL 中提取仓库基础 URL
-     * 支持以下格式：
-     * - 页面链接: https://hf-mirror.com/user/repo
-     * - 直接链接: https://hf-mirror.com/user/repo/resolve/main/path/to/file.onnx
-     * - GitHub releases: https://github.com/user/repo/releases/tag/xxx
-     */
-    private fun extractRepoBaseUrl(url: String): String {
-        // 处理 HuggingFace / hf-mirror 的 resolve/main 链接
-        val resolveIndex = url.indexOf("/resolve/main/")
-        if (resolveIndex != -1) {
-            return url.substring(0, resolveIndex)
-        }
+    fun parseHuggingFaceRepository(url: String): ModelRepository? {
+        val normalized = url.trim().trimEnd('/')
+        if (normalized.isBlank()) return null
 
-        // 处理 GitHub releases 的 download 链接
-        val downloadIndex = url.indexOf("/releases/download/")
-        if (downloadIndex != -1) {
-            return url.substring(0, downloadIndex)
-        }
+        val withoutScheme = normalized
+            .removePrefix("https://")
+            .removePrefix("http://")
+        val host = withoutScheme.substringBefore("/")
+        if (host.isBlank()) return null
 
-        // 处理 GitHub releases 的 tag 页面链接
-        val tagIndex = url.indexOf("/releases/tag/")
-        if (tagIndex != -1) {
-            return url.substring(0, tagIndex)
-        }
+        val path = withoutScheme.substringAfter("/", missingDelimiterValue = "")
+        if (path.isBlank()) return null
 
-        // 去掉末尾斜杠
-        return url.trimEnd('/')
+        val repoPath = path
+            .substringBefore("/resolve/")
+            .substringBefore("/tree/")
+            .substringBefore("/blob/")
+            .substringBefore("/files/")
+            .substringBefore("?")
+            .trim('/')
+
+        val parts = repoPath.split('/').filter { it.isNotBlank() }
+        if (parts.size < 2) return null
+
+        val scheme = if (normalized.startsWith("http://")) "http" else "https"
+        return ModelRepository(
+            hostBaseUrl = "$scheme://$host",
+            repoId = "${parts[0]}/${parts[1]}",
+        )
+    }
+
+    fun buildResolveUrl(repository: ModelRepository, relativePath: String): String {
+        return "${repository.hostBaseUrl}/${repository.repoId}/resolve/main/${relativePath.trimStart('/')}"
+    }
+
+    fun buildApiUrl(repository: ModelRepository): String {
+        return "${repository.hostBaseUrl}/api/models/${repository.repoId}"
+    }
+
+    private fun extractDirectResolvePath(url: String): String? {
+        val marker = "/resolve/main/"
+        val index = url.indexOf(marker)
+        if (index == -1) return null
+        return url.substring(index + marker.length).substringBefore("?").takeIf { it.isNotBlank() }
     }
 }

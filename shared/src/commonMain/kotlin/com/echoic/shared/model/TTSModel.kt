@@ -49,4 +49,7 @@ enum class TTSModel(
     // Volcano Engine (火山引擎)
     VOLCENGINE_TTS("volcano-tts", "Volcano TTS", TTSProvider.VOLCENGINE),
     VOLCENGINE_MEGA("volcano-mega", "Volcano Mega", TTSProvider.VOLCENGINE),
+
+    // Edge TTS
+    EDGETTS_DEFAULT("edge-tts", "Edge TTS", TTSProvider.EDGETTS),
 }

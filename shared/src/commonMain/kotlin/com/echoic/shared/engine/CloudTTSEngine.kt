@@ -32,8 +32,11 @@ class CloudTTSEngine(
         require(text.isNotBlank()) { "Text must not be blank" }
 
         val provider = model.provider
-        val apiKey = apiKeyProvider(provider)
-            ?: throw TTSError.MissingAPIKey(provider.displayName)
+        val apiKey = if (provider.requiresAPIKey) {
+            apiKeyProvider(provider) ?: throw TTSError.MissingAPIKey(provider.displayName)
+        } else {
+            "no-key-required"
+        }
         val baseURL = baseURLProvider(provider)
 
         val service = TTSServiceFactory.create(provider, httpClient, apiKey, baseURL)

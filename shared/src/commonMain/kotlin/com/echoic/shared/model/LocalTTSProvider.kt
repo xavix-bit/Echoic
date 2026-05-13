@@ -1,5 +1,7 @@
 package com.echoic.shared.model
 
+import com.echoic.shared.platform.platformCurrentOSName
+
 /**
  * Represents a download mirror for TTS models.
  *
@@ -32,12 +34,12 @@ enum class LocalTTSProvider(
     val requiresGPU: Boolean = false,
     val minVRAM: Int? = null, // GB
 ) {
-    PIPER(
-        displayName = "Piper",
-        subtitle = "Fast, lightweight neural TTS (ONNX-based)",
-        downloadURL = "https://huggingface.co/rhasspy/piper-voices",
-        githubURL = "https://github.com/rhasspy/piper",
-        documentationURL = "https://rhasspy.github.io/piper/",
+    KOKORO(
+        displayName = "Kokoro",
+        subtitle = "Lightweight StyleTTS2-based TTS (82M params, ONNX)",
+        downloadURL = "https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models",
+        githubURL = "https://github.com/hexgrad/kokoro",
+        documentationURL = "https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/kokoro.html",
         tags = listOf(
             TTSTag.OFFLINE,
             TTSTag.OPEN_SOURCE,
@@ -48,35 +50,29 @@ enum class LocalTTSProvider(
             TTSTag.NO_API_KEY,
             TTSTag.NEURAL,
         ),
-        modelSizeMB = 60,
-        supportedLanguages = listOf("en", "zh", "de", "fr", "es", "it", "nl", "pl", "ru", "ja", "ko"),
-        integrationMethod = "ONNX Runtime Java bindings or JNI",
-        notes = "Based on VITS architecture. Models in ONNX format. Very fast inference. Community-maintained voice models for 30+ languages.",
+        modelSizeMB = 316,
+        supportedLanguages = listOf("en", "zh", "ja", "ko", "fr", "de", "es", "it", "pt", "ru"),
+        integrationMethod = "Sherpa-ONNX JNI",
+        notes = "StyleTTS2-based, ~82M params, Apache-2.0. ONNX 格式通过 Sherpa-ONNX 加载。支持中英日韩法德西意葡俄等语言。",
         platformSupport = listOf(
             Platform.LINUX_X64,
-            Platform.LINUX_ARM64,
-            Platform.LINUX_ARMV7,
             Platform.WINDOWS_X64,
             Platform.MACOS_X64,
             Platform.MACOS_ARM64,
         ),
         downloadMirrors = listOf(
             DownloadMirror(
-                name = "hf-mirror.com (Recommended)",
-                url = "https://hf-mirror.com/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx",
+                name = "GitHub Releases (Recommended)",
+                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.gz",
                 isDefault = true,
             ),
             DownloadMirror(
-                name = "HuggingFace",
-                url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx",
+                name = "ghfast.top 加速",
+                url = "https://ghfast.top/https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.gz",
             ),
             DownloadMirror(
-                name = "hf-mirror (XiaoYa Chinese)",
-                url = "https://hf-mirror.com/rhasspy/piper-voices/resolve/main/zh/zh_CN/xiao_ya/medium/zh_CN-xiao_ya-medium.onnx",
-            ),
-            DownloadMirror(
-                name = "HuggingFace (XiaoYa Chinese)",
-                url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/xiao_ya/medium/zh_CN-xiao_ya-medium.onnx",
+                name = "ghproxy 加速",
+                url = "https://mirror.ghproxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.gz",
             ),
         ),
     ),
@@ -96,7 +92,7 @@ enum class LocalTTSProvider(
             TTSTag.NO_API_KEY,
             TTSTag.NEURAL,
         ),
-        modelSizeMB = 115,
+        modelSizeMB = 116,
         supportedLanguages = listOf("en", "zh", "de", "fr", "es", "ja", "ko", "ru"),
         integrationMethod = "JNI Java bindings (official)",
         notes = "Official Java/Kotlin bindings via JNI. Supports multiple TTS models (VITS, Piper, etc.). Best option for JVM/KMP integration. Also supports ASR and speaker identification.",
@@ -116,60 +112,20 @@ enum class LocalTTSProvider(
         downloadMirrors = listOf(
             DownloadMirror(
                 name = "hf-mirror.com (Recommended)",
-                url = "https://hf-mirror.com/csukuangfj/vits-zh-hf-fanchen-unity/resolve/main/vits-zh-hf-fanchen-unity.onnx",
+                url = "https://hf-mirror.com/csukuangfj/vits-zh-hf-fanchen-unity",
                 isDefault = true,
             ),
             DownloadMirror(
                 name = "HuggingFace",
-                url = "https://huggingface.co/csukuangfj/vits-zh-hf-fanchen-unity/resolve/main/vits-zh-hf-fanchen-unity.onnx",
+                url = "https://huggingface.co/csukuangfj/vits-zh-hf-fanchen-unity",
             ),
             DownloadMirror(
                 name = "hf-mirror (MeloTTS Chinese-English)",
-                url = "https://hf-mirror.com/csukuangfj/vits-melo-tts-zh_en/resolve/main/model.onnx",
+                url = "https://hf-mirror.com/csukuangfj/vits-melo-tts-zh_en",
             ),
             DownloadMirror(
                 name = "hf-mirror (Piper Chinese Medium)",
                 url = "https://hf-mirror.com/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx",
-            ),
-        ),
-    ),
-    ESPEAK(
-        displayName = "eSpeak NG",
-        subtitle = "Lightweight, multilingual speech synthesizer",
-        downloadURL = "https://github.com/espeak-ng/espeak-ng/releases",
-        githubURL = "https://github.com/espeak-ng/espeak-ng",
-        documentationURL = null,
-        tags = listOf(
-            TTSTag.OFFLINE,
-            TTSTag.OPEN_SOURCE,
-            TTSTag.LIGHTWEIGHT,
-            TTSTag.FAST,
-            TTSTag.MULTILINGUAL,
-            TTSTag.LOCAL_COMPUTE,
-            TTSTag.NO_API_KEY,
-        ),
-        modelSizeMB = 10,
-        supportedLanguages = listOf("en", "zh", "de", "fr", "es", "it", "pt", "ru", "ja", "ko", "ar", "hi"),
-        integrationMethod = "JNI/JNA wrapper or ProcessBuilder",
-        notes = "Supports 80+ languages. Very small footprint. Formant-based synthesis (less natural than neural models). Good fallback option.",
-        platformSupport = listOf(
-            Platform.MACOS_X64,
-            Platform.MACOS_ARM64,
-            Platform.WINDOWS_X64,
-            Platform.WINDOWS_ARM64,
-            Platform.LINUX_X64,
-            Platform.LINUX_ARM64,
-            Platform.LINUX_ARMV7,
-        ),
-        downloadMirrors = listOf(
-            DownloadMirror(
-                name = "Windows Installer (MSI)",
-                url = "https://github.com/espeak-ng/espeak-ng/releases/download/1.52.0/espeak-ng.msi",
-                isDefault = true,
-            ),
-            DownloadMirror(
-                name = "Source Code",
-                url = "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.zip",
             ),
         ),
     ),
@@ -213,118 +169,37 @@ enum class LocalTTSProvider(
             ),
         ),
     ),
-    COSYVOICE(
-        displayName = "CosyVoice",
-        subtitle = "Multi-lingual TTS with voice cloning (Alibaba)",
-        downloadURL = "https://huggingface.co/FunAudioLLM/CosyVoice2-0.5B",
-        githubURL = "https://github.com/FunAudioLLM/CosyVoice",
-        documentationURL = "https://fun-audio-llm.github.io/CosyVoice/",
+    VIBEVOICE(
+        displayName = "VibeVoice",
+        subtitle = "Microsoft Realtime TTS (500M params)",
+        downloadURL = "https://huggingface.co/microsoft/VibeVoice-Realtime-0.5B",
+        githubURL = "https://github.com/microsoft/VibeVoice",
+        documentationURL = "https://github.com/microsoft/VibeVoice/blob/main/docs/vibevoice-tts.md",
         tags = listOf(
             TTSTag.OFFLINE,
             TTSTag.OPEN_SOURCE,
             TTSTag.MULTILINGUAL,
             TTSTag.HIGH_QUALITY,
-            TTSTag.VOICE_CLONING,
             TTSTag.LOCAL_COMPUTE,
             TTSTag.NO_API_KEY,
             TTSTag.NEURAL,
         ),
-        modelSizeMB = 3200,
-        supportedLanguages = listOf("zh", "en", "ja", "ko", "de", "fr", "es", "it", "ru"),
-        integrationMethod = "Python API or Gradio Web UI",
-        notes = "Fun-CosyVoice 3.0：支持9种语言和18种中文方言，零样本声音克隆，拼音/音素控制，流式合成延迟低至150ms。Apache-2.0开源协议。",
+        modelSizeMB = 1500,
+        supportedLanguages = listOf("en", "zh"),
+        integrationMethod = "REST API (localhost:3000)",
+        notes = "微软开源的实时流式 TTS，支持中英双语，延迟约 300ms。需要启动本地 Python 服务。",
         platformSupport = listOf(
             Platform.LINUX_X64,
             Platform.WINDOWS_X64,
             Platform.MACOS_X64,
+            Platform.MACOS_ARM64,
         ),
         requiresGPU = true,
         minVRAM = 4,
         downloadMirrors = listOf(
             DownloadMirror(
-                name = "hf-mirror.com (Recommended)",
-                url = "https://hf-mirror.com/FunAudioLLM/CosyVoice2-0.5B/resolve/main/llm.pt",
-                isDefault = true,
-            ),
-            DownloadMirror(
                 name = "HuggingFace",
-                url = "https://huggingface.co/FunAudioLLM/CosyVoice2-0.5B/resolve/main/llm.pt",
-            ),
-        ),
-    ),
-    CHATTTS(
-        displayName = "ChatTTS",
-        subtitle = "Conversational TTS for daily dialogue",
-        downloadURL = "https://huggingface.co/2noise/ChatTTS",
-        githubURL = "https://github.com/2noise/ChatTTS",
-        documentationURL = null,
-        tags = listOf(
-            TTSTag.OFFLINE,
-            TTSTag.OPEN_SOURCE,
-            TTSTag.MULTILINGUAL,
-            TTSTag.HIGH_QUALITY,
-            TTSTag.FAST,
-            TTSTag.LOCAL_COMPUTE,
-            TTSTag.NO_API_KEY,
-            TTSTag.NEURAL,
-        ),
-        modelSizeMB = 1200,
-        supportedLanguages = listOf("zh", "en"),
-        integrationMethod = "Python API",
-        notes = "专为日常对话设计的生成式语音模型，支持中英文，可与LLM集成。39k+ GitHub Stars，社区活跃。Apache-2.0开源协议。",
-        platformSupport = listOf(
-            Platform.LINUX_X64,
-            Platform.WINDOWS_X64,
-            Platform.MACOS_X64,
-        ),
-        requiresGPU = false,
-        downloadMirrors = listOf(
-            DownloadMirror(
-                name = "hf-mirror.com (Recommended)",
-                url = "https://hf-mirror.com/2noise/ChatTTS/resolve/main/asset/gpt/model.safetensors",
-                isDefault = true,
-            ),
-            DownloadMirror(
-                name = "HuggingFace",
-                url = "https://huggingface.co/2noise/ChatTTS/resolve/main/asset/gpt/model.safetensors",
-            ),
-        ),
-    ),
-    GPTSOVITS(
-        displayName = "GPT-SoVITS",
-        subtitle = "Few-shot voice cloning TTS",
-        downloadURL = "https://huggingface.co/lj1995/GPT-SoVITS",
-        githubURL = "https://github.com/RVC-Boss/GPT-SoVITS",
-        documentationURL = null,
-        tags = listOf(
-            TTSTag.OFFLINE,
-            TTSTag.OPEN_SOURCE,
-            TTSTag.MULTILINGUAL,
-            TTSTag.HIGH_QUALITY,
-            TTSTag.VOICE_CLONING,
-            TTSTag.LOCAL_COMPUTE,
-            TTSTag.NO_API_KEY,
-            TTSTag.NEURAL,
-        ),
-        modelSizeMB = 2000,
-        supportedLanguages = listOf("zh", "en", "ja", "ko"),
-        integrationMethod = "Python API or Web UI",
-        notes = "最流行的开源TTS项目（57k+ Stars），仅需1分钟语音数据即可训练高质量TTS模型。支持中英日韩四语。MIT开源协议。",
-        platformSupport = listOf(
-            Platform.LINUX_X64,
-            Platform.WINDOWS_X64,
-        ),
-        requiresGPU = true,
-        minVRAM = 4,
-        downloadMirrors = listOf(
-            DownloadMirror(
-                name = "hf-mirror.com (Recommended)",
-                url = "https://hf-mirror.com/lj1995/GPT-SoVITS/resolve/main/s2G488k.pth",
-                isDefault = true,
-            ),
-            DownloadMirror(
-                name = "HuggingFace",
-                url = "https://huggingface.co/lj1995/GPT-SoVITS/resolve/main/s2G488k.pth",
+                url = "https://huggingface.co/microsoft/VibeVoice-Realtime-0.5B",
             ),
         ),
     ),
@@ -349,4 +224,24 @@ enum class LocalTTSProvider(
     /** Available local models for this provider. */
     val availableModels: List<LocalTTSModel>
         get() = LocalTTSModel.entries.filter { it.provider == this }
+
+    companion object {
+        /** Detect the current operating system at runtime. */
+        val currentOS: Platform.OS
+            get() {
+                val osName = platformCurrentOSName()
+                return when {
+                    osName == "macos" -> Platform.OS.MACOS
+                    osName == "windows" -> Platform.OS.WINDOWS
+                    osName == "linux" -> Platform.OS.LINUX
+                    else -> Platform.OS.MACOS
+                }
+            }
+
+        /** Only return providers that support the current platform. */
+        val supportedEntries: List<LocalTTSProvider>
+            get() = values().toList().filter { provider ->
+                provider.platformSupport.any { it.os == currentOS }
+            }
+    }
 }

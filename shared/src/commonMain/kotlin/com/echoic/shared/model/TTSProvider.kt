@@ -9,6 +9,7 @@ enum class TTSProvider(
     val apiKeyPlaceholder: String,
     val apiKeyDescription: String,
     val tags: List<TTSTag>,
+    val requiresAPIKey: Boolean = true,
 ) {
     OPENAI(
         displayName = "OpenAI",
@@ -119,9 +120,18 @@ enum class TTSProvider(
         apiKeyPlaceholder = "appid;access_token",
         apiKeyDescription = "Volcano Engine appid and access token (format: appid;token)",
         tags = listOf(TTSTag.HIGH_QUALITY, TTSTag.CHINESE, TTSTag.FAST, TTSTag.LOCAL, TTSTag.MULTILINGUAL),
+    ),
+    EDGETTS(
+        displayName = "Edge TTS",
+        subtitle = "Free Microsoft Edge voices (No API Key)",
+        defaultBaseURL = "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1",
+        helpURL = null,
+        websiteURL = "https://github.com/rany2/edge-tts",
+        apiKeyPlaceholder = "Not required",
+        apiKeyDescription = "Edge TTS is free and does not require an API key.",
+        tags = listOf(TTSTag.FREE, TTSTag.CHINESE, TTSTag.ENGLISH, TTSTag.FAST, TTSTag.MULTILINGUAL),
+        requiresAPIKey = false,
     );
-
-    val requiresAPIKey: Boolean get() = true
 
     val apiKeyStorageKey: String get() = "${name.lowercase()}_api_key"
     val baseURLStorageKey: String get() = "${name.lowercase()}_base_url"

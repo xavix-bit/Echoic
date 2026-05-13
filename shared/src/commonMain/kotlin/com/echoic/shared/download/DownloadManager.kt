@@ -1,85 +1,82 @@
 package com.echoic.shared.download
 
-import io.ktor.client.*
-import io.ktor.client.engine.java.*
-import io.ktor.client.plugins.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.utils.io.*
+import com.echoic.shared.model.LocalTTSProvider
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.request.header
+import io.ktor.client.request.get
+import io.ktor.client.request.prepareGet
+import io.ktor.client.statement.HttpStatement
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.isSuccess
+import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import java.io.RandomAccessFile
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import com.echoic.shared.platform.PlatformFile
+import com.echoic.shared.platform.platformFileOutputStream
+import com.echoic.shared.platform.PlatformOutputStream
+import com.echoic.shared.platform.PlatformRandomAccessFile
+import com.echoic.shared.platform.platformCurrentTimeMillis
 
-/**
- * 下载状态
- */
 sealed class DownloadState {
-    /** 空闲状态 */
     data object Idle : DownloadState()
 
-    /** 下载中 */
     data class Downloading(
         val progress: Float,
-        val speed: Long, // bytes per second
+        val speed: Long,
         val sourceName: String,
         val downloadedBytes: Long = 0L,
         val totalBytes: Long = 0L,
+        val currentFile: Int = 0,
+        val totalFiles: Int = 0,
     ) : DownloadState()
 
-    /** 下载完成 */
     data class Completed(val path: String) : DownloadState()
-
-    /** 下载失败 */
     data class Failed(val error: String) : DownloadState()
+    data object Cancelled : DownloadState()
 }
 
-/**
- * 下载源
- */
 data class DownloadSource(
     val name: String,
     val url: String,
-    val priority: Int, // 优先级，数字越小优先级越高
+    val priority: Int,
     val isAvailable: Boolean = true,
     val description: String = "",
 )
 
-/**
- * 下载管理器
- * 支持多线路下载、断点续传、自动切换和速度测试
- */
 class DownloadManager {
-    private val httpClient: HttpClient = HttpClient(Java) {
-        engine {
-            // 配置超时等
-        }
-        install(io.ktor.client.plugins.HttpTimeout) {
-            requestTimeoutMillis = 600_000 // 10 分钟
-            connectTimeoutMillis = 30_000 // 30 秒
-            socketTimeoutMillis = 600_000 // 10 分钟
+    private val httpClient = HttpClient(CIO) {
+        install(HttpTimeout) {
+            requestTimeoutMillis = 60 * 60 * 1000 // 1 hour for the entire request
+            connectTimeoutMillis = 30_000 // 30 seconds
+            socketTimeoutMillis = 30_000 // 30 seconds of inactivity to trigger retry
         }
         followRedirects = true
     }
 
+    private val json = Json { ignoreUnknownKeys = true }
+
     private val _downloadState = MutableStateFlow<DownloadState>(DownloadState.Idle)
     val downloadState: StateFlow<DownloadState> = _downloadState.asStateFlow()
 
-    private var currentSource: DownloadSource? = null
-    private var downloadJob: Job? = null
+    @Volatile
     private var isCancelled = false
 
-    /**
-     * 默认下载源列表
-     */
     fun getDefaultSources(providerName: String): List<DownloadSource> {
         val modelPath = providerName.lowercase().replace(" ", "-")
         return listOf(
@@ -95,511 +92,462 @@ class DownloadManager {
                 priority = 2,
                 description = "官方源",
             ),
-            DownloadSource(
-                name = "GitHub Releases",
-                url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/model/$modelPath",
-                priority = 3,
-                description = "GitHub 发布页",
-            ),
         )
     }
 
-    /**
-     * 下载模型，支持自动切换下载源
-     */
-    suspend fun downloadModel(
-        sources: List<DownloadSource>,
-        targetPath: String,
-        onProgress: (DownloadState) -> Unit = {},
-    ) {
-        _downloadState.value = DownloadState.Idle
-        onProgress(DownloadState.Idle)
-        isCancelled = false
+    suspend fun discoverRepositoryFiles(
+        provider: LocalTTSProvider,
+        repositoryUrl: String,
+    ): List<DownloadFile> {
+        val repository = DownloadConfig.parseHuggingFaceRepository(repositoryUrl)
+            ?: return DownloadConfig.getFallbackDownloadFiles(provider, repositoryUrl)
 
-        val sortedSources = sources.filter { it.isAvailable }.sortedBy { it.priority }
-
-        for (source in sortedSources) {
-            if (isCancelled) break
-            try {
-                currentSource = source
-                downloadFromSource(source, targetPath, onProgress)
-                return // 成功则返回
-            } catch (e: CancellationException) {
-                // 协程取消，直接抛出
-                throw e
-            } catch (e: Exception) {
-                // 失败则尝试下一个源
-                println("Download from ${source.name} failed: ${e.message}")
-                continue
+        return try {
+            val response = httpClient.get(DownloadConfig.buildApiUrl(repository))
+            if (!response.status.isSuccess()) {
+                return DownloadConfig.getFallbackDownloadFiles(provider, repositoryUrl)
             }
-        }
 
-        if (!isCancelled) {
-            // 所有源都失败
-            val failedState = DownloadState.Failed("所有下载源都不可用")
-            _downloadState.value = failedState
-            onProgress(failedState)
+            val root = json.parseToJsonElement(response.bodyAsText()).jsonObject
+            val siblings = root["siblings"]?.jsonArray.orEmpty()
+            val files = siblings.mapNotNull { element ->
+                val obj = element.jsonObject
+                val relativePath = obj["rfilename"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                if (!isModelAsset(relativePath)) return@mapNotNull null
+
+                DownloadFile(
+                    relativePath = relativePath,
+                    url = DownloadConfig.buildResolveUrl(repository, relativePath),
+                    sizeBytes = obj.longOrNull("size"),
+                )
+            }
+
+            files.ifEmpty { DownloadConfig.getFallbackDownloadFiles(provider, repositoryUrl) }
+        } catch (_: Exception) {
+            DownloadConfig.getFallbackDownloadFiles(provider, repositoryUrl)
         }
     }
 
     /**
-     * 从指定下载源下载，支持断点续传
+     * 下载多个文件，提供基于实际字节数的准确进度反馈。
+     *
+     * 当文件总大小未知时（如回退文件列表无 sizeBytes），会动态估算总量：
+     * - 初始时根据已知文件大小估算总大小
+     * - 每下载完一个文件，用实际大小更新估算
+     * - 进度 = 已完成字节 / 动态估算总字节
      */
-    private suspend fun downloadFromSource(
-        source: DownloadSource,
-        targetPath: String,
+    suspend fun downloadFiles(
+        files: List<DownloadFile>,
+        targetDir: String,
+        sourceName: String,
+        expectedTotalBytes: Long = 0L,
         onProgress: (DownloadState) -> Unit,
     ) {
-        withContext(Dispatchers.IO) {
-            val targetFile = File(targetPath)
-            targetFile.parentFile?.mkdirs()
+        if (files.isEmpty()) {
+            fail("没有可下载的文件", onProgress)
+            return
+        }
 
-            // 检查已下载的字节数（用于断点续传）
-            var existingBytes = 0L
-            if (targetFile.exists()) {
-                existingBytes = targetFile.length()
+        isCancelled = false
+
+        val targetDirectory = PlatformFile(targetDir)
+        targetDirectory.mkdirs()
+
+        // 动态追踪每个文件的实际大小：null 表示尚不知道
+        val fileSizes = files.map { it.sizeBytes }.toMutableList()
+        val totalFiles = files.size
+        var completedBytes = 0L
+
+        fun computeDynamicTotal(): Long {
+            val knownSizes = fileSizes.filterNotNull()
+            if (knownSizes.size == totalFiles) {
+                // 所有文件大小已知
+                return knownSizes.sum()
             }
-
-            // 发起请求，支持 Range 头实现断点续传
-            val response = httpClient.get(source.url) {
-                header(HttpHeaders.Accept, "application/octet-stream")
-                if (existingBytes > 0) {
-                    header(HttpHeaders.Range, "bytes=$existingBytes-")
-                }
+            if (knownSizes.isEmpty()) {
+                // 完全不知道大小，返回 0（外部会用文件数回退）
+                return 0L
             }
+            // 基于已知文件的平均大小估算未知文件
+            val knownSum = knownSizes.sum()
+            val avgSize = knownSum / knownSizes.size
+            val unknownCount = totalFiles - knownSizes.size
+            return knownSum + (avgSize * unknownCount)
+        }
 
-            // 检查响应状态
-            if (!response.status.isSuccess() && response.status != HttpStatusCode.PartialContent) {
-                throw Exception("HTTP ${response.status.value}: ${response.status.description}")
-            }
+        fun emitAggregate(
+            fileIndex: Int,
+            currentFileBytes: Long,
+            currentFileTotal: Long,
+            speed: Long,
+            currentFileName: String,
+        ) {
+            val dynamicTotal = computeDynamicTotal()
+            val aggregateDownloaded = completedBytes + currentFileBytes
 
-            // 检查 Content-Type，确保不是 HTML 错误页面
-            val contentType = response.headers[HttpHeaders.ContentType]?.lowercase() ?: ""
-            if (contentType.contains("text/html")) {
-                throw Exception("服务器返回了 HTML 页面而不是文件下载，请检查下载链接是否正确")
-            }
+            val aggregateProgress: Float
+            val aggregateTotal: Long
 
-            // 如果服务器不支持断点续传（返回 200 而不是 206），从头开始
-            val resumeSupported = response.status == HttpStatusCode.PartialContent
-            if (!resumeSupported && existingBytes > 0) {
-                existingBytes = 0L
-            }
-
-            val channel = response.bodyAsChannel()
-            val contentLength = response.headers[HttpHeaders.ContentLength]?.toLongOrNull() ?: 0L
-            val totalBytes = if (resumeSupported && existingBytes > 0) {
-                existingBytes + contentLength
+            if (expectedTotalBytes > 0) {
+                aggregateTotal = expectedTotalBytes
+                aggregateProgress = (aggregateDownloaded.toFloat() / aggregateTotal).coerceIn(0f, 1f)
+            } else if (dynamicTotal > 0) {
+                aggregateTotal = dynamicTotal
+                aggregateProgress = (aggregateDownloaded.toFloat() / dynamicTotal).coerceIn(0f, 1f)
+            } else if (currentFileTotal > 0) {
+                // 用当前文件大小粗略估算（假设所有文件差不多大）
+                aggregateTotal = currentFileTotal * totalFiles
+                aggregateProgress = (aggregateDownloaded.toFloat() / aggregateTotal).coerceIn(0f, 1f)
             } else {
-                contentLength
+                // 完全未知：用文件计数回退
+                aggregateTotal = 0L
+                aggregateProgress = ((fileIndex + (if (currentFileTotal > 0) currentFileBytes.toFloat() / currentFileTotal else 0f)) / totalFiles).coerceIn(0f, 1f)
             }
 
-            val buffer = ByteArray(BUFFER_SIZE)
-            var downloadedBytes = existingBytes
-            var lastReportTime = System.currentTimeMillis()
-            var lastDownloadedBytes = existingBytes
+            val state = DownloadState.Downloading(
+                progress = aggregateProgress,
+                speed = speed,
+                sourceName = "$sourceName: $currentFileName",
+                downloadedBytes = aggregateDownloaded,
+                totalBytes = aggregateTotal,
+                currentFile = fileIndex + 1,
+                totalFiles = totalFiles,
+            )
+            _downloadState.value = state
+            onProgress(state)
+        }
 
-            // 写入文件
-            if (resumeSupported && existingBytes > 0) {
-                // 断点续传：追加写入
-                RandomAccessFile(targetFile, "rw").use { raf ->
-                    raf.seek(existingBytes)
-                    while (!channel.isClosedForRead && !isCancelled) {
-                        val bytesRead = channel.readAvailable(buffer)
-                        if (bytesRead > 0) {
-                            raf.write(buffer, 0, bytesRead)
-                            downloadedBytes += bytesRead
+        try {
+            files.forEachIndexed { index, file ->
+                if (isCancelled) throw CancellationException("下载已取消")
 
-                            val currentTime = System.currentTimeMillis()
-                            val timeDiff = currentTime - lastReportTime
+                val destination = safeDestination(targetDirectory, file.relativePath)
+                val fileSize = file.sizeBytes
 
-                            // 每 100ms 更新一次进度
-                            if (timeDiff >= 100) {
-                                val speed = if (timeDiff > 0) {
-                                    (downloadedBytes - lastDownloadedBytes) * 1000 / timeDiff
-                                } else 0L
+                // 跳过已完整下载的文件
+                if (fileSize != null && destination.exists() && destination.length() == fileSize) {
+                    completedBytes += fileSize
+                    emitAggregate(
+                        fileIndex = index,
+                        currentFileBytes = fileSize,
+                        currentFileTotal = fileSize,
+                        speed = 0L,
+                        currentFileName = file.relativePath,
+                    )
+                    return@forEachIndexed
+                }
 
-                                val progress = if (totalBytes > 0) {
-                                    downloadedBytes.toFloat() / totalBytes
-                                } else 0f
-
-                                val state = DownloadState.Downloading(
-                                    progress = progress.coerceIn(0f, 1f),
-                                    speed = speed,
-                                    sourceName = source.name,
-                                    downloadedBytes = downloadedBytes,
-                                    totalBytes = totalBytes,
+                var retryCount = 0
+                val maxRetries = 3
+                var downloaded = 0L
+                var success = false
+                while (retryCount < maxRetries && !success) {
+                    try {
+                        downloaded = downloadSingleFile(
+                            file = file,
+                            destination = destination,
+                            sourceName = sourceName,
+                        ) { state ->
+                            if (state is DownloadState.Downloading) {
+                                // 动态更新文件大小估算
+                                if (fileSizes[index] == null && state.totalBytes > 0) {
+                                    fileSizes[index] = state.totalBytes
+                                }
+                                emitAggregate(
+                                    fileIndex = index,
+                                    currentFileBytes = state.downloadedBytes,
+                                    currentFileTotal = state.totalBytes,
+                                    speed = state.speed,
+                                    currentFileName = file.relativePath,
                                 )
-                                _downloadState.value = state
-                                onProgress(state)
-
-                                lastReportTime = currentTime
-                                lastDownloadedBytes = downloadedBytes
                             }
                         }
-                    }
-                }
-            } else {
-                // 全新下载
-                FileOutputStream(targetFile, false).use { fos ->
-                    val outputStream = fos.buffered()
-                    while (!channel.isClosedForRead && !isCancelled) {
-                        val bytesRead = channel.readAvailable(buffer)
-                        if (bytesRead > 0) {
-                            outputStream.write(buffer, 0, bytesRead)
-                            downloadedBytes += bytesRead
-
-                            val currentTime = System.currentTimeMillis()
-                            val timeDiff = currentTime - lastReportTime
-
-                            // 每 100ms 更新一次进度
-                            if (timeDiff >= 100) {
-                                val speed = if (timeDiff > 0) {
-                                    (downloadedBytes - lastDownloadedBytes) * 1000 / timeDiff
-                                } else 0L
-
-                                val progress = if (totalBytes > 0) {
-                                    downloadedBytes.toFloat() / totalBytes
-                                } else 0f
-
-                                val state = DownloadState.Downloading(
-                                    progress = progress.coerceIn(0f, 1f),
-                                    speed = speed,
-                                    sourceName = source.name,
-                                    downloadedBytes = downloadedBytes,
-                                    totalBytes = totalBytes,
-                                )
-                                _downloadState.value = state
-                                onProgress(state)
-
-                                lastReportTime = currentTime
-                                lastDownloadedBytes = downloadedBytes
-                            }
+                        success = true
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        retryCount++
+                        if (retryCount >= maxRetries) {
+                            throw e
                         }
+                        kotlinx.coroutines.delay(1000L * retryCount) // exponential backoff
                     }
-                    outputStream.flush()
                 }
+
+                // 下载完成，记录实际大小
+                if (fileSizes[index] == null) {
+                    fileSizes[index] = downloaded
+                }
+                completedBytes += downloaded
             }
 
-            if (isCancelled) {
-                // 取消时不删除文件，支持续传
-                val cancelledState = DownloadState.Failed("下载已取消")
-                _downloadState.value = cancelledState
-                onProgress(cancelledState)
-                return@withContext
-            }
-
-            // 下载完成
-            val completedState = DownloadState.Completed(targetPath)
+            val completedState = DownloadState.Completed(targetDirectory.absolutePath)
             _downloadState.value = completedState
             onProgress(completedState)
+        } catch (e: CancellationException) {
+            _downloadState.value = DownloadState.Cancelled
+            onProgress(DownloadState.Cancelled)
+            throw e
+        } catch (e: Exception) {
+            fail(e.message ?: "下载失败", onProgress)
+            throw e
         }
     }
 
-    /**
-     * 下载单个文件到指定路径
-     */
     suspend fun downloadFile(
         url: String,
-        destination: File,
+        destination: PlatformFile,
         sourceName: String = "Direct",
         onProgress: (DownloadState) -> Unit = {},
     ) {
         _downloadState.value = DownloadState.Idle
         isCancelled = false
-
-        withContext(Dispatchers.IO) {
-            destination.parentFile?.mkdirs()
-
-            var existingBytes = 0L
-            if (destination.exists()) {
-                existingBytes = destination.length()
-            }
-
-            val response = httpClient.get(url) {
-                header(HttpHeaders.Accept, "application/octet-stream")
-                if (existingBytes > 0) {
-                    header(HttpHeaders.Range, "bytes=$existingBytes-")
-                }
-            }
-
-            if (!response.status.isSuccess() && response.status != HttpStatusCode.PartialContent) {
-                throw Exception("HTTP ${response.status.value}: ${response.status.description}")
-            }
-
-            // 检查 Content-Type，确保不是 HTML 错误页面
-            val contentType = response.headers[HttpHeaders.ContentType]?.lowercase() ?: ""
-            if (contentType.contains("text/html")) {
-                throw Exception("服务器返回了 HTML 页面而不是文件下载，请检查下载链接是否正确")
-            }
-
-            val resumeSupported = response.status == HttpStatusCode.PartialContent
-            if (!resumeSupported && existingBytes > 0) {
-                existingBytes = 0L
-            }
-
-            val channel = response.bodyAsChannel()
-            val contentLength = response.headers[HttpHeaders.ContentLength]?.toLongOrNull() ?: 0L
-            val totalBytes = if (resumeSupported && existingBytes > 0) {
-                existingBytes + contentLength
-            } else {
-                contentLength
-            }
-
-            val buffer = ByteArray(BUFFER_SIZE)
-            var downloadedBytes = existingBytes
-            var lastReportTime = System.currentTimeMillis()
-            var lastDownloadedBytes = existingBytes
-
-            if (resumeSupported && existingBytes > 0) {
-                RandomAccessFile(destination, "rw").use { raf ->
-                    raf.seek(existingBytes)
-                    while (!channel.isClosedForRead && !isCancelled) {
-                        val bytesRead = channel.readAvailable(buffer)
-                        if (bytesRead > 0) {
-                            raf.write(buffer, 0, bytesRead)
-                            downloadedBytes += bytesRead
-
-                            val currentTime = System.currentTimeMillis()
-                            val timeDiff = currentTime - lastReportTime
-                            if (timeDiff >= 100) {
-                                val speed = if (timeDiff > 0) {
-                                    (downloadedBytes - lastDownloadedBytes) * 1000 / timeDiff
-                                } else 0L
-                                val progress = if (totalBytes > 0) {
-                                    downloadedBytes.toFloat() / totalBytes
-                                } else 0f
-                                val state = DownloadState.Downloading(
-                                    progress = progress.coerceIn(0f, 1f),
-                                    speed = speed,
-                                    sourceName = sourceName,
-                                    downloadedBytes = downloadedBytes,
-                                    totalBytes = totalBytes,
-                                )
-                                _downloadState.value = state
-                                onProgress(state)
-                                lastReportTime = currentTime
-                                lastDownloadedBytes = downloadedBytes
-                            }
-                        }
-                    }
-                }
-            } else {
-                FileOutputStream(destination, false).use { fos ->
-                    val outputStream = fos.buffered()
-                    while (!channel.isClosedForRead && !isCancelled) {
-                        val bytesRead = channel.readAvailable(buffer)
-                        if (bytesRead > 0) {
-                            outputStream.write(buffer, 0, bytesRead)
-                            downloadedBytes += bytesRead
-
-                            val currentTime = System.currentTimeMillis()
-                            val timeDiff = currentTime - lastReportTime
-                            if (timeDiff >= 100) {
-                                val speed = if (timeDiff > 0) {
-                                    (downloadedBytes - lastDownloadedBytes) * 1000 / timeDiff
-                                } else 0L
-                                val progress = if (totalBytes > 0) {
-                                    downloadedBytes.toFloat() / totalBytes
-                                } else 0f
-                                val state = DownloadState.Downloading(
-                                    progress = progress.coerceIn(0f, 1f),
-                                    speed = speed,
-                                    sourceName = sourceName,
-                                    downloadedBytes = downloadedBytes,
-                                    totalBytes = totalBytes,
-                                )
-                                _downloadState.value = state
-                                onProgress(state)
-                                lastReportTime = currentTime
-                                lastDownloadedBytes = downloadedBytes
-                            }
-                        }
-                    }
-                    outputStream.flush()
-                }
-            }
-
-            if (isCancelled) {
-                val cancelledState = DownloadState.Failed("下载已取消")
-                _downloadState.value = cancelledState
-                onProgress(cancelledState)
-                return@withContext
-            }
-
+        try {
+            downloadSingleFile(
+                file = DownloadFile(destination.name, url),
+                destination = destination,
+                sourceName = sourceName,
+                onProgress = { state ->
+                    _downloadState.value = state
+                    onProgress(state)
+                },
+            )
             val completedState = DownloadState.Completed(destination.absolutePath)
             _downloadState.value = completedState
             onProgress(completedState)
+        } catch (e: CancellationException) {
+            _downloadState.value = DownloadState.Cancelled
+            onProgress(DownloadState.Cancelled)
+            throw e
+        } catch (e: Exception) {
+            val failedState = DownloadState.Failed(e.message ?: "下载失败")
+            _downloadState.value = failedState
+            onProgress(failedState)
+            throw e
         }
     }
 
-    /**
-     * 测试下载源速度
-     * 返回下载速度（bytes/s），如果不可用则返回 -1
-     */
-    suspend fun testSourceSpeed(url: String): Long {
-        return withContext(Dispatchers.IO) {
-            try {
-                val startTime = System.currentTimeMillis()
-                val response = httpClient.get(url) {
-                    header(HttpHeaders.Range, "bytes=0-1023") // 只下载 1KB 测试
-                }
-                val endTime = System.currentTimeMillis()
-
-                if (response.status.isSuccess() || response.status == HttpStatusCode.PartialContent) {
-                    val bytes = response.bodyAsChannel().readAvailable(ByteArray(1024))
-                    val timeMs = (endTime - startTime).coerceAtLeast(1)
-                    bytes * 1000L / timeMs // bytes per second
-                } else {
-                    -1L
-                }
-            } catch (e: Exception) {
+    suspend fun testSourceSpeed(url: String): Long = withContext(Dispatchers.IO) {
+        try {
+            val testUrl = DownloadConfig.parseHuggingFaceRepository(url)
+                ?.let { DownloadConfig.buildApiUrl(it) }
+                ?: url
+            val startTime = platformCurrentTimeMillis()
+            val response = httpClient.get(testUrl) {
+                header(HttpHeaders.Range, "bytes=0-8191")
+            }
+            val elapsedMs = (platformCurrentTimeMillis() - startTime).coerceAtLeast(1)
+            if (response.status.isSuccess() || response.status == HttpStatusCode.PartialContent) {
+                response.bodyAsText().encodeToByteArray().size * 1000L / elapsedMs
+            } else {
                 -1L
             }
+        } catch (_: Exception) {
+            -1L
         }
     }
 
-    /**
-     * 自动选择最佳下载源
-     * 测试所有源的速度，返回最快的
-     */
-    suspend fun selectBestSource(sources: List<DownloadSource>): DownloadSource? {
-        val availableSources = sources.filter { it.isAvailable }
-        if (availableSources.isEmpty()) return null
-
-        // 并行测试所有源的速度
-        val speeds = availableSources.associateWith { source ->
-            testSourceSpeed(source.url)
-        }
-
-        // 选择速度最快的源
-        return speeds.entries
-            .filter { it.value > 0 }
-            .maxByOrNull { it.value }
-            ?.key
-            ?: availableSources.firstOrNull()
-    }
-
-    /**
-     * 切换下载源
-     */
-    suspend fun switchSource(
-        source: DownloadSource,
-        targetPath: String,
-        onProgress: (DownloadState) -> Unit = {},
-    ) {
-        currentSource = source
-        downloadFromSource(source, targetPath, onProgress)
-    }
-
-    /**
-     * 取消下载
-     */
     fun cancelDownload() {
         isCancelled = true
-        downloadJob?.cancel()
-        _downloadState.value = DownloadState.Idle
+        _downloadState.value = DownloadState.Cancelled
     }
 
-    /**
-     * 重置下载状态
-     */
     fun resetState() {
         isCancelled = false
         _downloadState.value = DownloadState.Idle
     }
 
-    /**
-     * 获取当前下载源
-     */
-    fun getCurrentSource(): DownloadSource? = currentSource
-
-    /**
-     * 下载多个文件到指定目录
-     * 逐个下载，整体进度按已完成文件数 + 当前文件进度综合计算
-     *
-     * @param urls 待下载的文件 URL 列表
-     * @param targetDir 目标目录
-     * @param onProgress 进度回调
-     */
-    suspend fun downloadMultipleFiles(
-        urls: List<String>,
-        targetDir: String,
-        onProgress: (DownloadState) -> Unit,
-    ) {
-        _downloadState.value = DownloadState.Idle
-        isCancelled = false
-
-        if (urls.isEmpty()) {
-            val failedState = DownloadState.Failed("没有可下载的文件")
-            _downloadState.value = failedState
-            onProgress(failedState)
-            return
-        }
-
-        val totalFiles = urls.size
-        var completedFiles = 0
-        val targetDirectory = java.io.File(targetDir)
-        targetDirectory.mkdirs()
-
-        for (url in urls) {
-            if (isCancelled) break
-
-            val fileName = url.substringAfterLast("/")
-            val targetFile = java.io.File(targetDirectory, fileName)
-
-            try {
-                downloadFile(url, targetFile, sourceName = fileName) { state ->
-                    when (state) {
-                        is DownloadState.Downloading -> {
-                            val overallProgress = (completedFiles + state.progress) / totalFiles
-                            onProgress(
-                                DownloadState.Downloading(
-                                    progress = overallProgress,
-                                    speed = state.speed,
-                                    sourceName = state.sourceName,
-                                    downloadedBytes = state.downloadedBytes,
-                                    totalBytes = state.totalBytes,
-                                )
-                            )
-                        }
-                        is DownloadState.Completed -> {
-                            completedFiles++
-                            if (completedFiles == totalFiles) {
-                                val completedState = DownloadState.Completed(targetDir)
-                                _downloadState.value = completedState
-                                onProgress(completedState)
-                            }
-                        }
-                        is DownloadState.Failed -> {
-                            onProgress(state)
-                            return@downloadFile
-                        }
-                        else -> onProgress(state)
-                    }
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                val failedState = DownloadState.Failed("下载 $fileName 失败: ${e.message}")
-                _downloadState.value = failedState
-                onProgress(failedState)
-                return
-            }
-        }
-
-        if (!isCancelled && completedFiles == totalFiles) {
-            _downloadState.value = DownloadState.Completed(targetDir)
-        }
-    }
-
-    /**
-     * 关闭 HttpClient
-     */
     fun close() {
         httpClient.close()
     }
 
+    private suspend fun downloadSingleFile(
+        file: DownloadFile,
+        destination: PlatformFile,
+        sourceName: String,
+        onProgress: (DownloadState) -> Unit,
+    ): Long = withContext(Dispatchers.IO) {
+        destination.parentFile?.mkdirs()
+
+        var existingBytes = if (destination.exists()) destination.length() else 0L
+        if (file.sizeBytes != null && existingBytes > file.sizeBytes) {
+            destination.delete()
+            existingBytes = 0L
+        }
+
+        return@withContext httpClient.prepareGet(file.url) {
+            header(HttpHeaders.Accept, "application/octet-stream")
+            if (existingBytes > 0) {
+                header(HttpHeaders.Range, "bytes=$existingBytes-")
+            }
+        }.execute { response ->
+            if (response.status == HttpStatusCode.RequestedRangeNotSatisfiable) {
+                val contentRange = response.headers[HttpHeaders.ContentRange]
+                val actualSize = contentRange?.substringAfterLast("/")?.toLongOrNull()
+                if (actualSize != null && existingBytes >= actualSize) {
+                    // File is already fully downloaded
+                    return@execute actualSize
+                } else {
+                    // Mismatched or invalid range, delete local file to retry from scratch
+                    destination.delete()
+                    throw Exception("${file.relativePath}: HTTP 416 Range Not Satisfiable (Cleaned partial file to retry)")
+                }
+            }
+
+            if (!response.status.isSuccess() && response.status != HttpStatusCode.PartialContent) {
+                throw Exception("${file.relativePath}: HTTP ${response.status.value} ${response.status.description}")
+            }
+
+            val contentType = response.headers[HttpHeaders.ContentType]?.lowercase().orEmpty()
+            if (contentType.contains("text/html")) {
+                throw Exception("${file.relativePath}: 下载链接返回 HTML 页面，不是模型文件（可能需要更换下载源）")
+            }
+
+            val resumeSupported = response.status == HttpStatusCode.PartialContent
+            if (!resumeSupported && existingBytes > 0) {
+                destination.delete()
+                existingBytes = 0L
+            }
+
+            val contentLength = response.headers[HttpHeaders.ContentLength]?.toLongOrNull() ?: 0L
+            val totalBytes = file.sizeBytes ?: if (resumeSupported && existingBytes > 0) {
+                existingBytes + contentLength
+            } else {
+                contentLength
+            }
+
+            val channel = response.bodyAsChannel()
+            val buffer = ByteArray(BUFFER_SIZE)
+            var downloadedBytes = existingBytes
+            var lastReportTime = platformCurrentTimeMillis()
+            var lastSpeedCalcTime = platformCurrentTimeMillis()
+            var lastSpeedCalcBytes = existingBytes
+            var smoothedSpeed = 0L
+
+            fun emitProgress(force: Boolean = false) {
+                val now = platformCurrentTimeMillis()
+                
+                // 限制 UI 刷新频率（每 200ms 最多刷新一次）
+                if (!force && (now - lastReportTime) < 200) return
+
+                // 限制速度计算频率（每 500ms 计算一次瞬时速度，并进行平滑处理）
+                val speedElapsed = (now - lastSpeedCalcTime).coerceAtLeast(1)
+                if (speedElapsed >= 500) {
+                    val instantSpeed = (downloadedBytes - lastSpeedCalcBytes).coerceAtLeast(0L) * 1000L / speedElapsed
+                    // 使用指数移动平均 (EMA) 使速度变化更平滑，避免剧烈跳变
+                    smoothedSpeed = if (smoothedSpeed == 0L) {
+                        instantSpeed
+                    } else {
+                        (smoothedSpeed * 0.7 + instantSpeed * 0.3).toLong()
+                    }
+                    lastSpeedCalcTime = now
+                    lastSpeedCalcBytes = downloadedBytes
+                }
+
+                val progress = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes else 0f
+                onProgress(
+                    DownloadState.Downloading(
+                        progress = progress.coerceIn(0f, 1f),
+                        speed = smoothedSpeed,
+                        sourceName = "$sourceName: ${file.relativePath}",
+                        downloadedBytes = downloadedBytes,
+                        totalBytes = totalBytes,
+                    )
+                )
+                lastReportTime = now
+            }
+
+            if (resumeSupported && existingBytes > 0) {
+                PlatformRandomAccessFile(destination, "rw").let { raf ->
+                    try {
+                        raf.seek(existingBytes)
+                        while (!channel.isClosedForRead && !isCancelled) {
+                            val read = kotlinx.coroutines.withTimeoutOrNull(30_000L) {
+                                channel.readAvailable(buffer)
+                            } ?: throw Exception("读取超时")
+                            if (read > 0) {
+                                raf.write(buffer, 0, read)
+                                downloadedBytes += read
+                                emitProgress()
+                            }
+                        }
+                    } finally {
+                        raf.close()
+                    }
+                }
+            } else {
+                val fos = platformFileOutputStream(destination, false)
+                try {
+                    while (!channel.isClosedForRead && !isCancelled) {
+                        val read = kotlinx.coroutines.withTimeoutOrNull(30_000L) {
+                            channel.readAvailable(buffer)
+                        } ?: throw Exception("读取超时")
+                        if (read > 0) {
+                            fos.write(buffer, 0, read)
+                            downloadedBytes += read
+                            emitProgress()
+                        }
+                    }
+                    fos.flush()
+                } finally {
+                    fos.close()
+                }
+            }
+
+            if (isCancelled) throw CancellationException("下载已取消")
+            emitProgress(force = true)
+
+            if (file.sizeBytes != null && downloadedBytes != file.sizeBytes) {
+                throw Exception("${file.relativePath}: 文件大小不匹配，期望 ${file.sizeBytes} bytes，实际 $downloadedBytes bytes")
+            }
+
+            downloadedBytes
+        }
+    }
+
+    private fun fail(message: String, onProgress: (DownloadState) -> Unit) {
+        val state = DownloadState.Failed(message)
+        _downloadState.value = state
+        onProgress(state)
+    }
+
+    private fun safeDestination(root: PlatformFile, relativePath: String): PlatformFile {
+        val destination = PlatformFile(root, relativePath)
+        val rootPath = root.canonicalPath
+        val destinationPath = destination.canonicalPath
+        if (!destinationPath.startsWith(rootPath)) {
+            throw IllegalArgumentException("非法文件路径: $relativePath")
+        }
+        return destination
+    }
+
+    private fun isModelAsset(relativePath: String): Boolean {
+        val name = relativePath.substringAfterLast("/")
+        if (name == ".gitattributes" || name == ".gitignore" || name == "README.md" || name == "LICENSE") return false
+        val lower = relativePath.lowercase()
+        return listOf(
+            ".bin",
+            ".json",
+            ".model",
+            ".onnx",
+            ".pth",
+            ".pt",
+            ".safetensors",
+            ".spm",
+            ".py",
+            ".txt",
+            ".yaml",
+            ".yml",
+            ".wav",
+            ".mp3",
+        ).any { lower.endsWith(it) } || !relativePath.contains(".")
+    }
+
+    private fun JsonObject.longOrNull(key: String): Long? {
+        return this[key]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
+    }
+
     companion object {
-        private const val BUFFER_SIZE = 8192
+        private const val BUFFER_SIZE = 64 * 1024
     }
 }

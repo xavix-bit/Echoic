@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XavierXia · Cloud Native & AI Explorer</title>
+  <meta name="description" content="XavierXia — 19岁大二学生 & 独立开发者 / 热爱云原生与 AI 技术 / CKA & CKS 认证" />
+  <meta name="author" content="XavierXia" />
+  <meta name="keywords" content="XavierXia, Cloud Native, AI, Kubernetes, CKA, CKS, Portfolio" />
+  <meta property="og:title" content="XavierXia · Cloud Native & AI Explorer" />
+  <meta property="og:description" content="19岁独立开发者，构建云原生基础设施与 AI 应用的交汇点。" />
+  <meta property="og:type" content="website" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'Arial', 'PingFang SC', 'sans-serif'],
+            mono: ['SF Mono', 'Fira Code', 'JetBrains Mono', 'monospace'],
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.8s ease-out forwards',
+            'float': 'float 6s ease-in-out infinite',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+    .dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
+    .dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-12px); } }
+
+    .reveal { opacity: 0; transform: translateY(30px); transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    .glass {
+      background: rgba(255,255,255,0.7);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+    }
+    .dark .glass { background: rgba(30,30,30,0.75); }
+
+    .project-card { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+    .project-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 60px -12px rgba(0,0,0,0.15); }
+    .dark .project-card:hover { box-shadow: 0 20px 60px -12px rgba(0,0,0,0.5); }
+
+    .tech-badge { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+    .tech-badge:hover { transform: translateY(-3px); }
+
+    .gradient-text {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    .grid-pattern {
+      background-image: linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .dark .grid-pattern {
+      background-image: linear-gradient(rgba(99,102,241,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.06) 1px, transparent 1px);
+    }
+
+    .nav-link::after { content: ''; display: block; width: 0; height: 2px; background: #6366f1; transition: width 0.3s; }
+    .nav-link:hover::after { width: 100%; }
+    .toggle-thumb { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+
+    /* Lang toggle */
+    .lang-btn { transition: all 0.2s; }
+    .lang-btn.active { background: #6366f1; color: #fff; }
+    .dark .lang-btn.active { background: #6366f1; color: #fff; }
+  </style>
+</head>
+
+<body class="bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100 font-sans antialiased grid-pattern min-h-screen">
+
+  <!-- NAVBAR -->
+  <nav class="fixed top-0 inset-x-0 z-50 glass border-b border-gray-200/50 dark:border-gray-800/50">
+    <div class="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+      <a href="#hero" class="text-lg font-semibold tracking-tight gradient-text">XavierXia</a>
+      <div class="hidden sm:flex items-center gap-8 text-sm font-medium text-gray-500 dark:text-gray-400">
+        <a href="#about" class="nav-link hover:text-gray-900 dark:hover:text-white transition-colors" data-i18n="nav_about">关于</a>
+        <a href="#experience" class="nav-link hover:text-gray-900 dark:hover:text-white transition-colors" data-i18n="nav_exp">经历</a>
+        <a href="#stack" class="nav-link hover:text-gray-900 dark:hover:text-white transition-colors" data-i18n="nav_stack">技术栈</a>
+        <a href="#projects" class="nav-link hover:text-gray-900 dark:hover:text-white transition-colors" data-i18n="nav_projects">项目</a>
+        <a href="#life" class="nav-link hover:text-gray-900 dark:hover:text-white transition-colors" data-i18n="nav_life">生活</a>
+      </div>
+      <div class="flex items-center gap-2">
+        <!-- Language toggle -->
+        <div class="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 text-xs">
+          <button onclick="setLang('zh')" id="lang-zh" class="lang-btn active px-2 py-1 font-medium">中</button>
+          <button onclick="setLang('en')" id="lang-en" class="lang-btn px-2 py-1 font-medium text-gray-500 dark:text-gray-400">EN</button>
+        </div>
+        <a href="https://github.com/xavix-bit" target="_blank" rel="noopener" class="text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors ml-1">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+        <button id="theme-toggle" class="relative w-10 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center px-0.5" aria-label="Toggle dark mode">
+          <span class="toggle-thumb w-5 h-5 rounded-full bg-white shadow-md flex items-center justify-center dark:translate-x-4">
+            <svg class="w-3 h-3 text-amber-500 dark:hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
+            <svg class="w-3 h-3 text-indigo-300 hidden dark:block" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+          </span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section id="hero" class="relative pt-32 pb-20 px-6 overflow-hidden">
+    <div class="absolute top-20 -left-32 w-96 h-96 bg-indigo-400/10 dark:bg-indigo-500/5 rounded-full blur-3xl animate-float"></div>
+    <div class="absolute bottom-0 right-0 w-80 h-80 bg-purple-400/10 dark:bg-purple-500/5 rounded-full blur-3xl animate-float" style="animation-delay:-3s;"></div>
+    <div class="max-w-5xl mx-auto relative">
+      <div class="reveal flex flex-col items-center text-center gap-6">
+        <img src="avatar.jpg" alt="XavierXia" class="w-28 h-28 rounded-full shadow-lg shadow-indigo-500/25 object-cover bg-gradient-to-br from-indigo-500 to-purple-600" style="transform:rotate(-90deg)" />
+        <div class="space-y-3">
+          <h1 class="text-4xl sm:text-5xl font-bold tracking-tight" data-i18n="hero_title">你好，我是 <span class="gradient-text">XavierXia</span></h1>
+          <p class="text-xl sm:text-2xl text-gray-500 dark:text-gray-400 font-light">Cloud Native <span class="text-gray-300 dark:text-gray-600">/</span> AI Explorer</p>
+        </div>
+        <p class="max-w-xl text-base text-gray-600 dark:text-gray-400 leading-relaxed" data-i18n="hero_desc">19 岁大二学生 & 独立开发者。站在<strong class="text-gray-900 dark:text-white">云原生基础设施</strong>与<strong class="text-gray-900 dark:text-white">AI 应用</strong>的交汇点。CKA & CKS 认证持有者，以 Vibe Coding 的方式极速交付。</p>
+        <div class="flex flex-wrap justify-center gap-3 pt-2">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-500/20">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+            <span data-i18n="badge_open">开放合作</span>
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-100 dark:border-amber-500/20">CKA / CKS</span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-500/20" data-i18n="badge_vibe">Vibe Coder</span>
+        </div>
+        <div class="flex gap-4 pt-4">
+          <a href="#projects" class="px-6 py-2.5 rounded-xl text-sm font-medium bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:opacity-90 transition-opacity" data-i18n="btn_projects">查看项目</a>
+          <a href="https://github.com/xavix-bit" target="_blank" rel="noopener" class="px-6 py-2.5 rounded-xl text-sm font-medium border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-colors">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about" class="py-20 px-6">
+    <div class="max-w-5xl mx-auto">
+      <div class="reveal">
+        <p class="text-xs font-semibold uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-3" data-i18n="about_label">关于</p>
+        <h2 class="text-3xl font-bold mb-10" data-i18n="about_title">关于我</h2>
+      </div>
+      <div class="reveal grid sm:grid-cols-2 gap-6">
+        <div class="p-6 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+          <div class="w-8 h-8 mb-3 text-indigo-500"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"/></svg></div>
+          <h3 class="font-semibold mb-2" data-i18n="about_cnc">云原生构建者</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed" data-i18n="about_cnc_d">日常驱动：Kubernetes、Istio、KubeEdge、KubeVirt。在 PVE 上搭建家庭实验室集群进行 SRE 实战演练。持有 CKA（Kubernetes 管理员）和 CKS（Kubernetes 安全专家）认证。</p>
+        </div>
+        <div class="p-6 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+          <div class="w-8 h-8 mb-3 text-indigo-500"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg></div>
+          <h3 class="font-semibold mb-2" data-i18n="about_ai">AI 应用开发者</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed" data-i18n="about_ai_d">对 AI 技术充满热情，深入研究 LLM、Agent、RAG 等前沿方向。使用 LangChain、FastAPI 和 Go 构建智能化工具，探索 AI 与云原生的深度融合。</p>
+        </div>
+        <div class="p-6 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+          <div class="w-8 h-8 mb-3 text-indigo-500"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg></div>
+          <h3 class="font-semibold mb-2">Vibe Coder</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed" data-i18n="about_vibe_d">借助 Claude Code 和 Prompt Engineering 以惊人的速度交付项目。相信软件的未来是对话式的——描述你想要的，快速迭代，交付高质量成果。</p>
+        </div>
+        <div class="p-6 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+          <div class="w-8 h-8 mb-3 text-indigo-500"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5"/></svg></div>
+          <h3 class="font-semibold mb-2" data-i18n="about_stu">学生 & 独立开发者</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed" data-i18n="about_stu_d">大二在读，自学云原生技术。通过英语六级 (CET-6)，具备国际社区协作能力。永远在学习，永远在构建。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXPERIENCE -->
+  <section id="experience" class="py-20 px-6 bg-gray-50/50 dark:bg-gray-900/50">
+    <div class="max-w-5xl mx-auto">
+      <div class="reveal">
+        <p class="text-xs font-semibold uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-3" data-i18n="exp_label">经历</p>
+        <h2 class="text-3xl font-bold mb-10" data-i18n="exp_title">教育 & 认证</h2>
+      </div>
+      <div class="reveal space-y-6">
+        <!-- CKA -->
+        <a href="https://www.cncf.io/certification/cka/" target="_blank" rel="noopener" class="flex gap-4 p-6 rounded-2xl bg-white dark:bg-gray-900 border border-indigo-100 dark:border-indigo-500/20 ring-1 ring-indigo-50 dark:ring-indigo-500/10 no-underline text-inherit hover:border-indigo-300 dark:hover:border-indigo-400 transition-colors cursor-pointer">
+          <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z"/></svg></div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <h3 class="font-semibold">CKA — Certified Kubernetes Administrator</h3>
+              <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300" data-i18n="cert">已认证</span>
+            </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1" data-i18n="cka_d">Linux Foundation · 证明具备 Kubernetes 管理员的完整运维能力</p>
+          </div>
+        </a>
+        <!-- CKS -->
+        <a href="https://www.cncf.io/certification/cks/" target="_blank" rel="noopener" class="flex gap-4 p-6 rounded-2xl bg-white dark:bg-gray-900 border border-indigo-100 dark:border-indigo-500/20 ring-1 ring-indigo-50 dark:ring-indigo-500/10 no-underline text-inherit hover:border-indigo-300 dark:hover:border-indigo-400 transition-colors cursor-pointer">
+          <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg></div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <h3 class="font-semibold">CKS — Certified Kubernetes Security Specialist</h3>
+              <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300" data-i18n="cert">已认证</span>
+            </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1" data-i18n="cks_d">Linux Foundation · 高级认证，聚焦安全加固、供应链安全与 Kubernetes 运行时安全</p>
+          </div>
+        </a>
+        <!-- CET-6 -->
+        <div class="flex gap-4 p-6 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+          <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/></svg></div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <h3 class="font-semibold" data-i18n="cet6">CET-6 · 大学英语六级</h3>
+              <span class="text-xs text-gray-500 dark:text-gray-400 font-mono" data-i18n="passed">已通过</span>
+            </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1" data-i18n="cet6_d">具备国际社区协作能力与英文技术文档读写能力</p>
+          </div>
+        </div>
+        <!-- Education -->
+        <div class="flex gap-4 p-6 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+          <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342"/></svg></div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <h3 class="font-semibold" data-i18n="exp_cs">大二 · 云计算专业在读</h3>
+              <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">2024 – Present</span>
+            </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1" data-i18n="exp_cs_d">自驱学习分布式系统、云基础设施与 AI 工程</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH STACK -->
+  <section id="stack" class="py-20 px-6">
+    <div class="max-w-5xl mx-auto">
+      <div class="reveal">
+        <p class="text-xs font-semibold uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-3" data-i18n="stack_label">技术栈</p>
+        <h2 class="text-3xl font-bold mb-10" data-i18n="stack_title">工具 & 技术</h2>
+      </div>
+      <div class="reveal space-y-8">
+        <div>
+          <h3 class="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4" data-i18n="stack_cloud">云原生 & 基础设施</h3>
+          <div class="flex flex-wrap gap-2.5">
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 border border-blue-100 dark:border-blue-500/20">Kubernetes</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 border border-blue-100 dark:border-blue-500/20">Istio</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 border border-blue-100 dark:border-blue-500/20">KubeEdge</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 border border-blue-100 dark:border-blue-500/20">KubeVirt</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 border border-blue-100 dark:border-blue-500/20">Proxmox VE</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 border border-blue-100 dark:border-blue-500/20">Docker</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 border border-blue-100 dark:border-blue-500/20">Linux</span>
+          </div>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4" data-i18n="stack_lang">编程语言</h3>
+          <div class="flex flex-wrap gap-2.5">
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300 border border-cyan-100 dark:border-cyan-500/20">Go</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300 border border-cyan-100 dark:border-cyan-500/20">Python</span>
+          </div>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">AI & ML</h3>
+          <div class="flex flex-wrap gap-2.5">
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300 border border-violet-100 dark:border-violet-500/20">LangChain</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300 border border-violet-100 dark:border-violet-500/20">FastAPI</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300 border border-violet-100 dark:border-violet-500/20">Streamlit</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300 border border-violet-100 dark:border-violet-500/20">React</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300 border border-violet-100 dark:border-violet-500/20">Vue 3</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300 border border-violet-100 dark:border-violet-500/20">Flutter</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300 border border-violet-100 dark:border-violet-500/20">Compose Multiplatform</span>
+          </div>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">Dev Tools</h3>
+          <div class="flex flex-wrap gap-2.5">
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-100 dark:border-amber-500/20">Claude Code</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-100 dark:border-amber-500/20">Git</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-100 dark:border-amber-500/20">GitHub Actions</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-100 dark:border-amber-500/20">Prometheus</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-100 dark:border-amber-500/20">Grafana</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-100 dark:border-amber-500/20">Codex</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-100 dark:border-amber-500/20">Stitch</span>
+            <span class="tech-badge px-4 py-2 rounded-xl text-sm font-medium bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-100 dark:border-amber-500/20">Firebase</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROJECTS -->
+  <section id="projects" class="py-20 px-6 bg-gray-50/50 dark:bg-gray-900/50">
+    <div class="max-w-5xl mx-auto">
+      <div class="reveal">
+        <p class="text-xs font-semibold uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-3" data-i18n="proj_label">项目</p>
+        <h2 class="text-3xl font-bold mb-10" data-i18n="proj_title">我的作品</h2>
+      </div>
+      <div class="reveal grid sm:grid-cols-2 gap-6">
+        <a href="https://github.com/xavix-bit/openclaw-gateway" target="_blank" rel="noopener" class="project-card p-6 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 cursor-pointer group block no-underline text-inherit">
+          <div class="flex items-start justify-between mb-4">
+            <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/></svg></div>
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-cyan-50 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-300">Go</span>
+          </div>
+          <h3 class="font-semibold text-lg mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">OpenClaw Gateway</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4" data-i18n="proj_oc">AI 混合推理路由网关。基于成本、延迟和模型能力，智能地将 LLM 请求分发到多个提供商。使用 Go 构建，面向高吞吐生产负载。</p>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="px-2 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">Go</span>
+            <span class="px-2 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">LLM Routing</span>
+            <span class="px-2 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">API Gateway</span>
+          </div>
+        </a>
+        <a href="https://github.com/xavix-bit/Word-Clash" target="_blank" rel="noopener" class="project-card p-6 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 cursor-pointer group block no-underline text-inherit">
+          <div class="flex items-start justify-between mb-4">
+            <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg></div>
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">React</span>
+          </div>
+          <h3 class="font-semibold text-lg mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Word Clash</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4" data-i18n="proj_wc">实时英语拼写对战游戏。玩家通过 Socket.IO 进行实时多人拼写竞技。节奏紧张、对抗激烈、趣味十足。</p>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="px-2 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">React</span>
+            <span class="px-2 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">Socket.IO</span>
+            <span class="px-2 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">Real-time</span>
+          </div>
+        </a>
+        <a href="https://github.com/xavix-bit/suanchao" target="_blank" rel="noopener" class="project-card p-6 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 cursor-pointer group block no-underline text-inherit">
+          <div class="flex items-start justify-between mb-4">
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg></div>
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300">Full Stack</span>
+          </div>
+          <h3 class="font-semibold text-lg mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" data-i18n="proj_sc_t">算潮 (Suanchao)</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4" data-i18n="proj_sc">AI 个性化编程训练平台。基于学习者进度，利用 LLM 驱动的分析来调整练习难度与内容。Vue 3 前端 + FastAPI 后端，打造无缝学习体验。</p>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="px-2 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">Vue 3</span>
+            <span class="px-2 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">FastAPI</span>
+            <span class="px-2 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">LLM</span>
+          </div>
+        </a>
+        <a href="https://github.com/xavix-bit/Duo" target="_blank" rel="noopener" class="project-card p-6 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 cursor-pointer group block no-underline text-inherit">
+          <div class="flex items-start justify-between mb-4">
+            <div class="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-500 group-hover:scale-110 transition-transform"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/></svg></div>
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-300">Mobile</span>
+          </div>
+          <h3 class="font-semibold text-lg mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Duo</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4" data-i18n="proj_duo">基于 Flutter + Appwrite 的情侣恋爱清单 App。记录共同目标、创造回忆，通过精心设计的移动体验保持彼此的连接。</p>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="px-2 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">Flutter</span>
+            <span class="px-2 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">Appwrite</span>
+            <span class="px-2 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">Mobile</span>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- GITHUB STATS -->
+  <section id="stats" class="py-20 px-6">
+    <div class="max-w-5xl mx-auto">
+      <div class="reveal">
+        <p class="text-xs font-semibold uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-3">GitHub</p>
+        <h2 class="text-3xl font-bold mb-10" data-i18n="stats_title">活跃度</h2>
+      </div>
+      <div class="reveal flex flex-col items-center gap-6">
+        <div class="w-full max-w-[500px]">
+          <img src="https://github-readme-stats.vercel.app/api?username=xavix-bit&show_icons=true&theme=transparent&hide_border=true&title_color=6366f1&icon_color=6366f1&text_color=6b7280&bg_color=00000000" alt="GitHub Stats" class="w-full rounded-xl" loading="lazy" />
+        </div>
+        <div class="w-full max-w-[500px]">
+          <img src="https://streak-stats.demolab.com/?user=xavix-bit&theme=transparent&hide_border=true&stroke=00000000&ring=6366f1&fire=6366f1&currStreakLabel=6366f1" alt="GitHub Streak" class="w-full rounded-xl" loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIFE -->
+  <section id="life" class="py-20 px-6 bg-gray-50/50 dark:bg-gray-900/50">
+    <div class="max-w-5xl mx-auto">
+      <div class="reveal">
+        <p class="text-xs font-semibold uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-3" data-i18n="life_label">生活</p>
+        <h2 class="text-3xl font-bold mb-10" data-i18n="life_title">代码之外</h2>
+      </div>
+      <div class="reveal grid sm:grid-cols-3 gap-6">
+        <div class="p-6 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-center group hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-colors">
+          <div class="mb-4 group-hover:scale-110 transition-transform inline-flex items-center justify-center w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-500/10 text-orange-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg></div>
+          <h3 class="font-semibold mb-2" data-i18n="life_gym">力量训练</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400" data-i18n="life_gym_d">力量训练爱好者。<br/>卧推 1RM：<strong class="text-gray-900 dark:text-white">110 kg</strong></p>
+        </div>
+        <div class="p-6 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-center group hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-colors">
+          <div class="mb-4 group-hover:scale-110 transition-transform inline-flex items-center justify-center w-12 h-12 rounded-xl bg-violet-50 dark:bg-violet-500/10 text-violet-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z"/></svg></div>
+          <h3 class="font-semibold mb-2" data-i18n="life_music">音乐</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400" data-i18n="life_music_d">吉他手 & 歌手。<br/>音乐是心灵的调试器。</p>
+        </div>
+        <div class="p-6 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-center group hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-colors">
+          <div class="mb-4 group-hover:scale-110 transition-transform inline-flex items-center justify-center w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-500/10 text-teal-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+          <h3 class="font-semibold mb-2" data-i18n="life_cycle">骑行</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400" data-i18n="life_cycle_d">公路骑行与探索。<br/>最好的灵感总在两个轮子上诞生。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="py-12 px-6 border-t border-gray-100 dark:border-gray-800">
+    <div class="max-w-5xl mx-auto flex flex-col items-center gap-4">
+      <div class="text-sm text-gray-400 dark:text-gray-500" data-i18n="footer">由 <span class="gradient-text font-medium">XavierXia</span> 用心构建</div>
+      <div class="flex gap-5 text-gray-400 dark:text-gray-500">
+        <a href="https://github.com/xavix-bit" target="_blank" rel="noopener" class="hover:text-gray-900 dark:hover:text-white transition-colors" aria-label="GitHub"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg></a>
+      </div>
+      <div class="text-xs text-gray-300 dark:text-gray-600">&copy; 2025 XavierXia. All rights reserved.</div>
+    </div>
+  </footer>
+
+  <script>
+  // === i18n ===
+  const I18N = {
+    zh: {
+      nav_about: '关于', nav_exp: '经历', nav_stack: '技术栈', nav_projects: '项目', nav_life: '生活',
+      hero_title: '你好，我是 <span class="gradient-text">XavierXia</span>',
+      hero_desc: '19 岁大二学生 & 独立开发者。对 <strong class="text-gray-900 dark:text-white">AI 技术</strong>充满浓厚兴趣，致力于将前沿 AI 能力融入工程实践。站在<strong class="text-gray-900 dark:text-white">云原生基础设施</strong>与<strong class="text-gray-900 dark:text-white">智能应用</strong>的交汇点。CKA & CKS 认证持有者，以 Vibe Coding 的方式极速交付。',
+      badge_open: '开放合作', badge_vibe: 'Vibe Coder',
+      btn_projects: '查看项目',
+      about_label: '关于', about_title: '关于我',
+      about_cnc: '云原生探索者', about_cnc_d: '热衷于 Kubernetes、Istio、KubeEdge、KubeVirt 等云原生技术。在 PVE 上搭建家庭实验室集群动手实践。持有 CKA 和 CKS 认证。',
+      about_ai: 'AI 技术爱好者', about_ai_d: '对 AI 技术充满热情，深入研究 LLM、Agent、RAG 等前沿方向。使用 LangChain、FastAPI 和 Go 构建智能化工具，探索 AI 与云原生的深度融合。',
+      about_vibe_d: '借助 Claude Code 和 Prompt Engineering 以惊人的速度交付项目。相信软件的未来是对话式的——描述你想要的，快速迭代，交付高质量成果。',
+      about_stu: '学生 & 独立开发者', about_stu_d: '大二在读，自学云原生技术。通过英语六级 (CET-6)，具备国际社区协作能力。永远在学习，永远在构建。',
+      exp_label: '经历', exp_title: '教育 & 认证',
+      exp_cs: '大二 · 云计算专业在读', exp_cs_d: '自驱学习分布式系统、云基础设施与 AI 工程',
+      cert: '已认证',
+      cka_d: 'Linux Foundation · 证明具备 Kubernetes 管理员的完整运维能力',
+      cks_d: 'Linux Foundation · 高级认证，聚焦安全加固、供应链安全与 Kubernetes 运行时安全',
+      cet6: 'CET-6 · 大学英语六级', passed: '已通过', cet6_d: '具备国际社区协作能力与英文技术文档读写能力',
+      stack_label: '技术栈', stack_title: '工具 & 技术',
+      stack_cloud: '云原生 & 基础设施', stack_lang: '编程语言', stack_fw: '框架 & AI',
+      proj_label: '项目', proj_title: '我的作品',
+      proj_oc: 'AI 混合推理路由网关。基于成本、延迟和模型能力，智能地将 LLM 请求分发到多个提供商。使用 Go 构建，面向高吞吐生产负载。',
+      proj_wc: '实时英语拼写对战游戏。玩家通过 Socket.IO 进行实时多人拼写竞技。节奏紧张、对抗激烈、趣味十足。',
+      proj_sc_t: '算潮 (Suanchao)',
+      proj_sc: 'AI 个性化编程训练平台。基于学习者进度，利用 LLM 驱动的分析来调整练习难度与内容。Vue 3 前端 + FastAPI 后端，打造无缝学习体验。',
+      proj_duo: '基于 Flutter + Appwrite 的情侣恋爱清单 App。记录共同目标、创造回忆，通过精心设计的移动体验保持彼此的连接。',
+      stats_title: '活跃度',
+      life_label: '生活', life_title: '代码之外',
+      life_gym: '力量训练', life_gym_d: '力量训练爱好者。<br/>卧推 1RM：<strong class="text-gray-900 dark:text-white">110 kg</strong>',
+      life_music: '音乐', life_music_d: '吉他手 & 歌手。<br/>音乐是心灵的调试器。',
+      life_cycle: '骑行', life_cycle_d: '公路骑行与探索。<br/>最好的灵感总在两个轮子上诞生。',
+      footer: '由 <span class="gradient-text font-medium">XavierXia</span> 用心构建',
+    },
+    en: {
+      nav_about: 'About', nav_exp: 'Experience', nav_stack: 'Stack', nav_projects: 'Projects', nav_life: 'Life',
+      hero_title: 'Hi, I\'m <span class="gradient-text">XavierXia</span>',
+      hero_desc: '19-year-old sophomore & independent developer. Deeply passionate about <strong class="text-gray-900 dark:text-white">AI technologies</strong>, dedicated to integrating cutting-edge AI capabilities into engineering practice. Building at the intersection of <strong class="text-gray-900 dark:text-white">cloud-native infrastructure</strong> and <strong class="text-gray-900 dark:text-white">intelligent applications</strong>. CKA & CKS certified. Shipping fast with vibe coding.',
+      badge_open: 'Open to collaborate', badge_vibe: 'Vibe Coder',
+      btn_projects: 'View Projects',
+      about_label: 'About', about_title: 'A bit about me',
+      about_cnc: 'Cloud Native Explorer', about_cnc_d: 'Passionate about Kubernetes, Istio, KubeEdge, KubeVirt and cloud-native technologies. Running homelab clusters on PVE for hands-on practice. CKA & CKS certified.',
+      about_ai: 'AI Enthusiast', about_ai_d: 'Deeply passionate about AI — actively exploring LLMs, Agents, RAG, and beyond. Building intelligent tools with LangChain, FastAPI, and Go, pushing the convergence of AI and cloud-native engineering.',
+      about_vibe_d: 'Leveraging Claude Code and prompt engineering to ship projects at extraordinary speed. Believes that the future of software is conversational — describe what you want, iterate fast, deliver quality.',
+      about_stu: 'Student & Independent Dev', about_stu_d: 'Sophomore at university, self-taught in cloud-native technologies. CET-6 certified with international community collaboration experience. Always learning, always building.',
+      exp_label: 'Experience', exp_title: 'Education & Certifications',
+      exp_cs: 'Sophomore · Cloud Computing', exp_cs_d: 'Self-driven learner focusing on distributed systems, cloud infrastructure, and AI engineering',
+      cert: 'Certified',
+      cka_d: 'Linux Foundation · Demonstrates ability to perform the responsibilities of a Kubernetes administrator',
+      cks_d: 'Linux Foundation · Advanced certification focusing on security hardening, supply chain security, and runtime security in Kubernetes',
+      cet6: 'CET-6 · College English Test Band 6', passed: 'Passed', cet6_d: 'Capable of international community collaboration and technical documentation in English',
+      stack_label: 'Tech Stack', stack_title: 'Tools & Technologies',
+      stack_cloud: 'Cloud Native & Infrastructure', stack_lang: 'Languages', stack_fw: 'Frameworks & AI',
+      proj_label: 'Projects', proj_title: 'What I\'ve Built',
+      proj_oc: 'AI-powered hybrid inference routing gateway. Intelligently distributes LLM requests across multiple providers based on cost, latency, and model capability. Built with Go for high-throughput production workloads.',
+      proj_wc: 'Real-time English spelling battle game. Players compete head-to-head in live spelling challenges with Socket.IO powering instant multiplayer sync. Fast-paced, competitive, and fun.',
+      proj_sc_t: 'Suanchao (算潮)',
+      proj_sc: 'AI-personalized coding training platform. Adapts exercise difficulty and content based on learner progress using LLM-powered analysis. Vue 3 frontend with FastAPI backend delivering a seamless learning experience.',
+      proj_duo: 'Couple\'s bucket list app built with Flutter and Appwrite. Track shared goals, create memories, and stay connected with your partner through a beautifully designed mobile experience.',
+      stats_title: 'Activity',
+      life_label: 'Life', life_title: 'Beyond Code',
+      life_gym: 'Powerlifting', life_gym_d: 'Strength training enthusiast.<br/>Bench press 1RM: <strong class="text-gray-900 dark:text-white">110 kg</strong>',
+      life_music: 'Music', life_music_d: 'Guitar player & singer.<br/>Music is my debugger for the mind.',
+      life_cycle: 'Cycling', life_cycle_d: 'Road cycling & exploration.<br/>Best ideas come on two wheels.',
+      footer: 'Built with care by <span class="gradient-text font-medium">XavierXia</span>',
+    }
+  };
+
+  let currentLang = localStorage.getItem('lang') || 'zh';
+
+  function setLang(lang) {
+    currentLang = lang;
+    localStorage.setItem('lang', lang);
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+    document.getElementById('lang-zh').classList.toggle('active', lang === 'zh');
+    document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+    document.getElementById('lang-zh').classList.toggle('text-gray-500', lang !== 'zh');
+    document.getElementById('lang-zh').classList.toggle('dark:text-gray-400', lang !== 'zh');
+    document.getElementById('lang-en').classList.toggle('text-gray-500', lang !== 'en');
+    document.getElementById('lang-en').classList.toggle('dark:text-gray-400', lang !== 'en');
+    const t = I18N[lang];
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (t[key] !== undefined) el.innerHTML = t[key];
+    });
+  }
+
+  // init lang
+  setLang(currentLang);
+
+  // === Dark mode ===
+  const toggle = document.getElementById('theme-toggle');
+  const html = document.documentElement;
+  function setTheme(dark) { html.classList.toggle('dark', dark); localStorage.setItem('theme', dark ? 'dark' : 'light'); }
+  const saved = localStorage.getItem('theme');
+  if (saved === 'dark') setTheme(true);
+  toggle.addEventListener('click', () => setTheme(!html.classList.contains('dark')));
+
+  // === Scroll reveal ===
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // === Smooth scroll ===
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', function(e) { e.preventDefault(); const t = document.querySelector(this.getAttribute('href')); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  });
+  </script>
+</body>
+</html>

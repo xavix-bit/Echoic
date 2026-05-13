@@ -1,19 +1,27 @@
 package com.echoic.app
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,36 +39,41 @@ data class SidebarItem(
 @Composable
 fun Sidebar(
     currentScreen: Screen,
+    expanded: Boolean,
     onNavigate: (Screen) -> Unit,
     onOpenSettings: () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
     val strings = LocalStrings.current
 
     val items = listOf(
         SidebarItem(Screen.HOME, "🏠", strings.home),
-        SidebarItem(Screen.CLOUD_TTS, "☁", strings.cloudTts),
-        SidebarItem(Screen.PROVIDERS, "🔧", strings.providers),
-        SidebarItem(Screen.LOCAL_MODELS, "💾", strings.localModels),
+        SidebarItem(Screen.GENERATE, "🎙", strings.generateSpeechTitle),
+        SidebarItem(Screen.PROVIDERS, "⚙", strings.providers),
     )
 
-    val width = if (expanded) 180.dp else 64.dp
+    // Smooth spring-animated width transition
+    val animatedWidth by animateDpAsState(
+        targetValue = if (expanded) 180.dp else 64.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "sidebarWidth",
+    )
 
     Column(
         modifier = Modifier
-            .width(width)
+            .width(animatedWidth)
             .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            .background(MaterialTheme.colorScheme.surface),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(12.dp))
 
-        // Brand + toggle
+        // Brand logo
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .clickable { expanded = !expanded }
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = if (expanded) Arrangement.spacedBy(8.dp) else Arrangement.Center,
@@ -87,7 +100,7 @@ fun Sidebar(
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(18.dp))
 
         // Navigation items
         items.forEach { item ->
@@ -102,15 +115,23 @@ fun Sidebar(
 
         Spacer(Modifier.weight(1f))
 
+        // Divider before settings
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 14.dp),
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+        )
+
+        Spacer(Modifier.height(8.dp))
+
         // Settings — bottom
         SidebarNavItem(
-            item = SidebarItem(Screen.CLOUD_TTS, "⚙", strings.settings),
+            item = SidebarItem(Screen.HOME, "⚙", strings.settings),
             isActive = false,
             expanded = expanded,
             onClick = onOpenSettings,
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
     }
 }
 
@@ -121,40 +142,71 @@ private fun SidebarNavItem(
     expanded: Boolean,
     onClick: () -> Unit,
 ) {
-    Row(
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val itemShape = RoundedCornerShape(12.dp)
+    val containerColor = when {
+        isActive -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+        isHovered -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+        else -> Color.Transparent
+    }
+    val contentColor = when {
+        isActive -> MaterialTheme.colorScheme.primary
+        isHovered -> MaterialTheme.colorScheme.onSurface
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Box(
         modifier = Modifier
             .padding(horizontal = 10.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                else MaterialTheme.colorScheme.surfaceVariant
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = if (expanded) Arrangement.spacedBy(12.dp) else Arrangement.Center,
+            .clip(itemShape)
+            .background(containerColor)
+            .hoverable(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            ),
     ) {
-        Text(
-            text = item.icon,
-            fontSize = 18.sp,
-            color = if (isActive) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (isActive) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 3.dp)
+                    .width(3.dp)
+                    .height(20.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.primary),
+            )
+        }
 
-        AnimatedVisibility(
-            visible = expanded,
-            enter = expandHorizontally(expandFrom = Alignment.Start),
-            exit = shrinkHorizontally(shrinkTowards = Alignment.Start),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (expanded) Arrangement.spacedBy(12.dp) else Arrangement.Center,
         ) {
             Text(
-                text = item.label,
-                fontSize = 13.sp,
-                fontWeight = if (isActive) FontWeight.Medium else FontWeight.Normal,
-                color = if (isActive) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
+                text = item.icon,
+                fontSize = 18.sp,
+                color = contentColor,
             )
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandHorizontally(expandFrom = Alignment.Start),
+                exit = shrinkHorizontally(shrinkTowards = Alignment.Start),
+            ) {
+                Text(
+                    text = item.label,
+                    fontSize = 13.sp,
+                    fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium,
+                    color = contentColor,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

@@ -11,7 +11,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.util.UUID
+import com.echoic.shared.platform.platformGenerateUUID
 
 /**
  * Volcano Engine (火山引擎) TTS service.
@@ -115,7 +115,7 @@ class VolcengineTTSService(
                         encoding = encodingParam,
                     ),
                     request = RequestParams(
-                        reqid = UUID.randomUUID().toString(),
+                        reqid = platformGenerateUUID(),
                         text = text,
                     ),
                 )

@@ -6,7 +6,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import java.io.File
+import com.echoic.shared.platform.PlatformFile
+import com.echoic.shared.platform.platformHomeDirectory
+import com.echoic.shared.platform.platformCurrentTimeMillis
 
 /**
  * Data class representing the installation status of a local model.
@@ -37,8 +39,8 @@ class LocalModelManager {
     /**
      * 刷新所有 provider 的安装状态
      */
-    private fun refreshAllStatuses() {
-        val initialStatuses = LocalTTSProvider.entries.associateWith { provider ->
+    fun refreshAllStatuses() {
+        val initialStatuses = LocalTTSProvider.values().toList().associateWith { provider ->
             val installed = isModelInstalledOnDisk(provider)
             val size = if (installed) getModelSizeOnDisk(provider) else 0L
             ModelInstallationStatus(
@@ -54,7 +56,7 @@ class LocalModelManager {
      * 获取模型的存储路径
      */
     fun getModelPath(provider: LocalTTSProvider): String {
-        val home = System.getProperty("user.home")
+        val home = platformHomeDirectory()
         return "$home/.echoic/models/${provider.name.lowercase()}"
     }
 
@@ -69,7 +71,7 @@ class LocalModelManager {
      * 检查文件系统中是否存在模型
      */
     private fun isModelInstalledOnDisk(provider: LocalTTSProvider): Boolean {
-        val modelDir = File(getModelPath(provider))
+        val modelDir = PlatformFile(getModelPath(provider))
         if (!modelDir.exists() || !modelDir.isDirectory) return false
         val files = modelDir.listFiles()
         return files != null && files.isNotEmpty()
@@ -86,14 +88,14 @@ class LocalModelManager {
      * 从文件系统计算模型大小
      */
     private fun getModelSizeOnDisk(provider: LocalTTSProvider): Long {
-        val modelDir = File(getModelPath(provider))
+        val modelDir = PlatformFile(getModelPath(provider))
         return calculateDirectorySize(modelDir)
     }
 
     /**
      * 计算目录总大小
      */
-    private fun calculateDirectorySize(directory: File): Long {
+    private fun calculateDirectorySize(directory: PlatformFile): Long {
         if (!directory.exists()) return 0L
         if (directory.isFile) return directory.length()
 
@@ -115,8 +117,8 @@ class LocalModelManager {
         return when {
             bytes < 1024 -> "$bytes B"
             bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-            bytes < 1024 * 1024 * 1024 -> "${"%.1f".format(bytes / (1024.0 * 1024.0))} MB"
-            else -> "${"%.2f".format(bytes / (1024.0 * 1024.0 * 1024.0))} GB"
+            bytes < 1024 * 1024 * 1024 -> "${bytes * 10 / (1024 * 1024) / 10.0} MB"
+            else -> "${bytes * 100 / (1024 * 1024 * 1024) / 100.0} GB"
         }
     }
 
@@ -164,7 +166,7 @@ class LocalModelManager {
 
         try {
             withContext(Dispatchers.IO) {
-                val modelDir = File(getModelPath(provider))
+                val modelDir = PlatformFile(getModelPath(provider))
                 if (modelDir.exists()) {
                     modelDir.deleteRecursively()
                 }
@@ -183,8 +185,8 @@ class LocalModelManager {
      */
     suspend fun clearCache(provider: LocalTTSProvider) {
         withContext(Dispatchers.IO) {
-            val home = System.getProperty("user.home")
-            val cacheDir = File("$home/.echoic/cache/${provider.name.lowercase()}")
+            val home = platformHomeDirectory()
+            val cacheDir = PlatformFile("$home/.echoic/cache/${provider.name.lowercase()}")
             if (cacheDir.exists()) {
                 cacheDir.deleteRecursively()
             }
@@ -195,7 +197,7 @@ class LocalModelManager {
      * 清除所有模型
      */
     suspend fun clearAll() {
-        for (provider in LocalTTSProvider.entries) {
+        for (provider in LocalTTSProvider.values().toList()) {
             if (isModelInstalled(provider)) {
                 uninstallModel(provider)
             }
@@ -207,14 +209,14 @@ class LocalModelManager {
      */
     suspend fun checkForUpdates(): Map<LocalTTSProvider, Boolean> {
         // 当前版本暂不支持远程更新检查
-        return LocalTTSProvider.entries.associateWith { false }
+        return LocalTTSProvider.values().toList().associateWith { false }
     }
 
     /**
      * 更新最后使用时间
      */
     fun updateLastUsed(provider: LocalTTSProvider) {
-        updateStatus(provider) { it.copy(lastUsedTimestamp = System.currentTimeMillis()) }
+        updateStatus(provider) { it.copy(lastUsedTimestamp = platformCurrentTimeMillis()) }
     }
 
     /**
@@ -223,7 +225,7 @@ class LocalModelManager {
     fun formatLastUsed(timestamp: Long): String {
         if (timestamp == 0L) return "Never"
 
-        val now = System.currentTimeMillis()
+        val now = platformCurrentTimeMillis()
         val diff = now - timestamp
 
         return when {

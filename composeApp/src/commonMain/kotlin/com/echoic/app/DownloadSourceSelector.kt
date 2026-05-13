@@ -175,7 +175,7 @@ private fun DownloadSourceItem(
                     Text(
                         text = when {
                             isTestingSpeed -> "${strings.speed}: 测试中..."
-                            speed != null && speed > 0 -> "${strings.speed}: ${formatSpeed(speed)}"
+                            speed != null && speed > 0 -> "${strings.speed}: ${formatSpeedLabel(speed)}"
                             speed != null && speed < 0 -> "${strings.speed}: 不可用"
                             else -> "${strings.speed}: 未测试"
                         },
@@ -198,7 +198,7 @@ private fun DownloadSourceItem(
 /**
  * 格式化速度
  */
-private fun formatSpeed(bytesPerSecond: Long): String {
+private fun formatSpeedLabel(bytesPerSecond: Long): String {
     return when {
         bytesPerSecond < 1024 -> "慢"
         bytesPerSecond < 100 * 1024 -> "中等"

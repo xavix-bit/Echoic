@@ -24,5 +24,6 @@ object TTSServiceFactory {
         TTSProvider.MINIMAX -> MiniMaxTTSService(httpClient, apiKey, baseURL)
         TTSProvider.ZHIPU -> ZhipuTTSService(httpClient, apiKey, baseURL)
         TTSProvider.VOLCENGINE -> VolcengineTTSService(httpClient, apiKey, baseURL)
+        TTSProvider.EDGETTS -> EdgeTTSService(httpClient, baseURL)
     }
 }

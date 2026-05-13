@@ -1,9 +1,11 @@
 package com.echoic.shared.config
 
+import com.echoic.shared.model.LocalTTSProvider
 import com.echoic.shared.model.TTSProvider
+import com.echoic.shared.platform.PlatformFile
+import com.echoic.shared.platform.platformConfigDirectory
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.io.File
 
 /**
  * Application configuration stored as JSON.
@@ -17,12 +19,14 @@ data class AppConfigData(
     val hasCompletedOnboarding: Boolean = false,
     val defaultOutputFormat: String = "mp3",
     val saveDirectory: String = "",
+    val defaultCloudProvider: String? = null,   // TTSProvider.name
+    val defaultLocalProvider: String? = null,   // LocalTTSProvider.name
 )
 
 /**
  * Manages app configuration with JSON file persistence.
  */
-class AppConfig(private val configFile: File) {
+class AppConfig(private val configFile: PlatformFile) {
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
     private var _data: AppConfigData = load()
 
@@ -66,8 +70,34 @@ class AppConfig(private val configFile: File) {
         save()
     }
 
+    fun getDefaultCloudProvider(): TTSProvider? {
+        val name = _data.defaultCloudProvider ?: return null
+        return try { TTSProvider.valueOf(name) } catch (_: Exception) { null }
+    }
+
+    fun getDefaultLocalProvider(): LocalTTSProvider? {
+        val name = _data.defaultLocalProvider ?: return null
+        return try { LocalTTSProvider.valueOf(name) } catch (_: Exception) { null }
+    }
+
+    fun setDefaultCloudProvider(provider: TTSProvider?) {
+        _data = _data.copy(defaultCloudProvider = provider?.name)
+        save()
+    }
+
+    fun setDefaultLocalProvider(provider: LocalTTSProvider?) {
+        _data = _data.copy(defaultLocalProvider = provider?.name)
+        save()
+    }
+
     fun isProviderConfigured(provider: TTSProvider): Boolean {
+        if (!provider.requiresAPIKey) return true
         return getApiKey(provider) != null
+    }
+
+    fun reset() {
+        _data = AppConfigData()
+        save()
     }
 
     private fun load(): AppConfigData {
@@ -92,15 +122,9 @@ class AppConfig(private val configFile: File) {
     }
 
     companion object {
-        fun defaultPath(): File {
-            val os = System.getProperty("os.name").lowercase()
-            val home = System.getProperty("user.home")
-            val configDir = when {
-                os.contains("mac") -> "$home/Library/Application Support/echoic"
-                os.contains("win") -> "${System.getenv("APPDATA")}/echoic"
-                else -> "$home/.config/echoic"
-            }
-            return File(configDir, "config.json")
+        fun defaultPath(): PlatformFile {
+            val configDir = platformConfigDirectory()
+            return PlatformFile("$configDir/config.json")
         }
     }
 }

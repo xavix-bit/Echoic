@@ -68,4 +68,10 @@ enum class Voice(
     VOLCENGINE_BV705_V2("BV705_V2", "炀炀", TTSProvider.VOLCENGINE),
     VOLCENGINE_BV406_V2("BV406_V2", "擎苍", TTSProvider.VOLCENGINE),
     VOLCENGINE_BV407_V2("BV407_V2", "通用男声", TTSProvider.VOLCENGINE),
+    
+    // Edge TTS voices
+    EDGETTS_XIAOXIAO("zh-CN-XiaoxiaoNeural", "晓晓 (Chinese)", TTSProvider.EDGETTS),
+    EDGETTS_YUNXI("zh-CN-YunxiNeural", "云希 (Chinese)", TTSProvider.EDGETTS),
+    EDGETTS_JENNY("en-US-JennyNeural", "Jenny (English)", TTSProvider.EDGETTS),
+    EDGETTS_GUY("en-US-GuyNeural", "Guy (English)", TTSProvider.EDGETTS),
 }

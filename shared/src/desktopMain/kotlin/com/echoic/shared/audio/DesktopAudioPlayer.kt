@@ -10,6 +10,7 @@ import javax.sound.sampled.AudioFormat as JavaxAudioFormat
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.Clip
 import javax.sound.sampled.DataLine
+import javax.sound.sampled.LineEvent
 import javax.sound.sampled.SourceDataLine
 
 /**
@@ -59,6 +60,13 @@ actual class AudioPlayer {
         val info = DataLine.Info(Clip::class.java, audioFormat)
         val clip = AudioSystem.getLine(info) as Clip
         clip.open(audioStream)
+        clip.addLineListener { event ->
+            if (event.type == LineEvent.Type.STOP && !clip.isRunning) {
+                _isPlaying.value = false
+                _currentTime.value = 0.0
+                stopTimer()
+            }
+        }
         clip.start()
 
         this.clip = clip

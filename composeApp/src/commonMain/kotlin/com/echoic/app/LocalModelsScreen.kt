@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.echoic.shared.config.AppConfig
 import com.echoic.shared.download.DownloadManager
 import com.echoic.shared.download.DownloadSource
 import com.echoic.shared.installer.InstallState
@@ -27,7 +28,7 @@ import com.echoic.shared.model.ModelInstallationStatus
 import kotlinx.coroutines.launch
 
 @Composable
-fun LocalModelsScreen() {
+fun LocalModelsScreen(config: AppConfig) {
     val strings = LocalStrings.current
     val manager = remember { LocalModelManager() }
     val downloadManager = remember { DownloadManager() }
@@ -43,6 +44,11 @@ fun LocalModelsScreen() {
     var availableSources by remember { mutableStateOf<List<DownloadSource>>(emptyList()) }
     var sourceSpeeds by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
     var isTestingSpeed by remember { mutableStateOf(false) }
+
+    // Uninstall confirmation dialog state
+    var showUninstallDialog by remember { mutableStateOf(false) }
+    var uninstallTargetProvider by remember { mutableStateOf<LocalTTSProvider?>(null) }
+    var uninstallTargetSize by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -62,7 +68,7 @@ fun LocalModelsScreen() {
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
-                    text = "${LocalTTSProvider.entries.size} providers available",
+                    text = "${LocalTTSProvider.supportedEntries.size} providers available",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -98,19 +104,23 @@ fun LocalModelsScreen() {
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            LocalTTSProvider.entries.forEach { provider ->
+            LocalTTSProvider.supportedEntries.forEach { provider ->
                 val status = modelStatuses[provider] ?: ModelInstallationStatus(provider = provider)
                 val isCurrentInstalling = currentInstallProvider == provider &&
                     currentInstallState !is InstallState.Idle &&
                     currentInstallState !is InstallState.Completed &&
                     currentInstallState !is InstallState.Failed
 
+                // Auto-expand when installing
+                val effectiveExpanded = expandedProvider == provider || isCurrentInstalling
+
                 LocalModelCard(
                     provider = provider,
                     status = status,
                     manager = manager,
+                    config = config,
                     installState = if (currentInstallProvider == provider) currentInstallState else null,
-                    isExpanded = expandedProvider == provider,
+                    isExpanded = effectiveExpanded,
                     onToggleExpand = {
                         expandedProvider = if (expandedProvider == provider) null else provider
                     },
@@ -122,6 +132,9 @@ fun LocalModelsScreen() {
                                 provider = provider,
                                 onStateChange = { state ->
                                     currentInstallState = state
+                                    if (state is InstallState.Completed) {
+                                        manager.refreshAllStatuses()
+                                    }
                                 },
                             )
                         }
@@ -134,6 +147,9 @@ fun LocalModelsScreen() {
                                 provider = provider,
                                 onStateChange = { state ->
                                     currentInstallState = state
+                                    if (state is InstallState.Completed) {
+                                        manager.refreshAllStatuses()
+                                    }
                                 },
                             )
                         }
@@ -144,9 +160,13 @@ fun LocalModelsScreen() {
                         showSourceSelector = true
                     },
                     onUninstall = {
-                        scope.launch {
-                            manager.uninstallModel(provider)
-                        }
+                        val size = if (status.isInstalled)
+                            manager.formatModelSize(status.sizeInBytes)
+                        else
+                            "${provider.modelSizeMB ?: 0} MB"
+                        uninstallTargetProvider = provider
+                        uninstallTargetSize = size
+                        showUninstallDialog = true
                     },
                     onClearCache = {
                         scope.launch {
@@ -157,6 +177,49 @@ fun LocalModelsScreen() {
                 )
             }
         }
+    }
+
+    // Uninstall confirmation dialog
+    if (showUninstallDialog && uninstallTargetProvider != null) {
+        AlertDialog(
+            onDismissRequest = { showUninstallDialog = false },
+            title = { Text(strings.uninstall) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("确定要卸载 ${uninstallTargetProvider!!.displayName} 吗？")
+                    Text(
+                        text = "模型大小: $uninstallTargetSize",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = "此操作无法撤销。",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            manager.uninstallModel(uninstallTargetProvider!!)
+                        }
+                        showUninstallDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    ),
+                ) {
+                    Text(strings.uninstall)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUninstallDialog = false }) {
+                    Text(strings.cancel)
+                }
+            },
+        )
     }
 
     // Source selector dialog
@@ -174,6 +237,9 @@ fun LocalModelsScreen() {
                         source = source,
                         onStateChange = { state ->
                             currentInstallState = state
+                            if (state is InstallState.Completed) {
+                                manager.refreshAllStatuses()
+                            }
                         },
                     )
                 }
@@ -203,7 +269,7 @@ fun LocalModelsScreen() {
         AlertDialog(
             onDismissRequest = { showClearAllDialog = false },
             title = { Text(strings.clearAll) },
-            text = { Text("Are you sure you want to uninstall all local models? This action cannot be undone.") },
+            text = { Text("确定要卸载所有本地模型吗？此操作无法撤销。") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -233,6 +299,7 @@ private fun LocalModelCard(
     provider: LocalTTSProvider,
     status: ModelInstallationStatus,
     manager: LocalModelManager,
+    config: AppConfig,
     installState: InstallState?,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
@@ -318,6 +385,93 @@ private fun LocalModelCard(
                 )
             }
 
+            // Inline progress bar (visible when installing, without expanding)
+            if (installState is InstallState.Downloading) {
+                Column(
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column {
+                            Text(
+                                text = "${(installState.progress * 100).toInt()}%",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            if (installState.currentFile > 0 && installState.totalFiles > 0) {
+                                Text(
+                                    text = "文件 ${installState.currentFile}/${installState.totalFiles}",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        Text(
+                            text = formatSpeed(installState.speed),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    LinearProgressIndicator(
+                        progress = { installState.progress },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    )
+                    if (installState.totalBytes > 0) {
+                        Text(
+                            text = "${formatBytes(installState.downloadedBytes)} / ${formatBytes(installState.totalBytes)}",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            } else if (installState is InstallState.Extracting) {
+                Column(
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = "${strings.extracting}: ${(installState.progress * 100).toInt()}%",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    LinearProgressIndicator(
+                        progress = { installState.progress },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    )
+                }
+            } else if (installState is InstallState.Verifying) {
+                Column(
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = strings.verifying,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    )
+                }
+            } else if (installState is InstallState.Cancelled) {
+                Text(
+                    text = "下载已取消 — 可重试",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                )
+            }
+
             // Expanded details
             AnimatedVisibility(
                 visible = isExpanded,
@@ -374,7 +528,7 @@ private fun LocalModelCard(
                         }
                     }
 
-                    // GPU 要求提示
+                    // GPU requirement
                     if (provider.requiresGPU) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -397,7 +551,6 @@ private fun LocalModelCard(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        // Model size
                         Column {
                             Text(
                                 text = strings.modelSize,
@@ -415,7 +568,6 @@ private fun LocalModelCard(
                             )
                         }
 
-                        // Last used
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
                                 text = strings.lastUsed,
@@ -431,10 +583,32 @@ private fun LocalModelCard(
                         }
                     }
 
-                    // Install progress display
-                    InstallProgressDisplay(
-                        installState = installState,
-                    )
+                    // Cancelled message
+                    if (installState is InstallState.Cancelled) {
+                        Text(
+                            text = "下载已取消",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    // Error message if failed
+                    if (installState is InstallState.Failed) {
+                        Text(
+                            text = "${strings.installFailed}: ${installState.error}",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+
+                    // Success message if completed
+                    if (installState is InstallState.Completed) {
+                        Text(
+                            text = strings.installComplete,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
 
                     // Action buttons
                     Row(
@@ -442,7 +616,6 @@ private fun LocalModelCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         if (status.isInstalled) {
-                            // Uninstall button
                             OutlinedButton(
                                 onClick = onUninstall,
                                 modifier = Modifier.weight(1f),
@@ -451,7 +624,6 @@ private fun LocalModelCard(
                                 Text(strings.uninstall, fontSize = 13.sp)
                             }
 
-                            // Clear cache button
                             OutlinedButton(
                                 onClick = onClearCache,
                                 modifier = Modifier.weight(1f),
@@ -460,7 +632,6 @@ private fun LocalModelCard(
                                 Text(strings.clearCache, fontSize = 13.sp)
                             }
 
-                            // Open directory button
                             OutlinedButton(
                                 onClick = {
                                     openUrl(manager.getModelPath(provider))
@@ -471,8 +642,7 @@ private fun LocalModelCard(
                             }
                         } else {
                             when (installState) {
-                                is InstallState.Failed -> {
-                                    // Retry button
+                                is InstallState.Failed, is InstallState.Cancelled -> {
                                     Button(
                                         onClick = onRetryInstall,
                                         modifier = Modifier.weight(1f),
@@ -480,7 +650,6 @@ private fun LocalModelCard(
                                         Text(strings.retryInstall, fontSize = 13.sp)
                                     }
 
-                                    // Select other source button
                                     OutlinedButton(
                                         onClick = onSelectOtherSource,
                                         modifier = Modifier.weight(1f),
@@ -489,7 +658,6 @@ private fun LocalModelCard(
                                     }
                                 }
                                 is InstallState.Completed -> {
-                                    // Show installed status
                                     Button(
                                         onClick = {},
                                         modifier = Modifier.fillMaxWidth(),
@@ -499,7 +667,6 @@ private fun LocalModelCard(
                                     }
                                 }
                                 else -> {
-                                    // Install button
                                     Button(
                                         onClick = onInstall,
                                         modifier = Modifier.fillMaxWidth(),
@@ -509,6 +676,51 @@ private fun LocalModelCard(
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // Set as default button
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                    Spacer(Modifier.height(8.dp))
+
+                    val isDefaultLocal = config.getDefaultLocalProvider() == provider
+                    if (isDefaultLocal) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(strings.isDefault, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Spacer(Modifier.weight(1f))
+                            OutlinedButton(
+                                onClick = {
+                                    config.setDefaultLocalProvider(null)
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                            ) {
+                                Text(strings.clearAll, fontSize = 11.sp)
+                            }
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                config.setDefaultLocalProvider(provider)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            enabled = status.isInstalled,
+                        ) {
+                            Text(strings.setAsDefault, fontSize = 12.sp)
                         }
                     }
 
@@ -530,9 +742,6 @@ private fun LocalModelCard(
     }
 }
 
-/**
- * 安装状态徽章
- */
 @Composable
 private fun InstallStatusBadge(
     isInstalled: Boolean,
@@ -544,6 +753,7 @@ private fun InstallStatusBadge(
         installState is InstallState.Downloading -> strings.installing to MaterialTheme.colorScheme.primary
         installState is InstallState.Extracting -> strings.extracting to MaterialTheme.colorScheme.primary
         installState is InstallState.Verifying -> strings.verifying to MaterialTheme.colorScheme.primary
+        installState is InstallState.Cancelled -> "已取消" to MaterialTheme.colorScheme.outline
         installState is InstallState.Failed -> strings.installFailed to MaterialTheme.colorScheme.error
         installState is InstallState.Completed -> strings.installComplete to MaterialTheme.colorScheme.tertiary
         isInstalled -> strings.installed to MaterialTheme.colorScheme.tertiary
@@ -562,119 +772,3 @@ private fun InstallStatusBadge(
     )
 }
 
-/**
- * 安装进度显示
- */
-@Composable
-private fun InstallProgressDisplay(
-    installState: InstallState?,
-) {
-    val strings = LocalStrings.current
-
-    when (installState) {
-        is InstallState.Downloading -> {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                // 进度百分比和速度
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = "${strings.downloading}: ${(installState.progress * 100).toInt()}%",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        text = formatSpeed(installState.speed),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                // 进度条
-                LinearProgressIndicator(
-                    progress = { installState.progress },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                )
-                // 已下载/总大小
-                if (installState.totalBytes > 0) {
-                    Text(
-                        text = "${formatBytes(installState.downloadedBytes)} / ${formatBytes(installState.totalBytes)}",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-        is InstallState.Extracting -> {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = "${strings.extracting}: ${(installState.progress * 100).toInt()}%",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                LinearProgressIndicator(
-                    progress = { installState.progress },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                )
-            }
-        }
-        is InstallState.Verifying -> {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = strings.verifying,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                )
-            }
-        }
-        is InstallState.Completed -> {
-            Text(
-                text = strings.installComplete,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.tertiary,
-            )
-        }
-        is InstallState.Failed -> {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = "${strings.installFailed}: ${installState.error}",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-        }
-        else -> {}
-    }
-}
-
-/**
- * 格式化下载速度
- */
-private fun formatSpeed(bytesPerSecond: Long): String {
-    return when {
-        bytesPerSecond < 1024 -> "$bytesPerSecond B/s"
-        bytesPerSecond < 1024 * 1024 -> "${bytesPerSecond / 1024} KB/s"
-        else -> "${"%.1f".format(bytesPerSecond / (1024.0 * 1024.0))} MB/s"
-    }
-}
-
-/**
- * 格式化字节数
- */
-private fun formatBytes(bytes: Long): String {
-    return when {
-        bytes < 1024 -> "$bytes B"
-        bytes < 1024 * 1024 -> "${"%.1f".format(bytes / 1024.0)} KB"
-        bytes < 1024 * 1024 * 1024 -> "${"%.1f".format(bytes / (1024.0 * 1024.0))} MB"
-        else -> "${"%.2f".format(bytes / (1024.0 * 1024.0 * 1024.0))} GB"
-    }
-}

@@ -26,7 +26,7 @@ fun DownloadProgressDialog(
 
     AlertDialog(
         onDismissRequest = {
-            if (downloadState !is DownloadState.Downloading) {
+            if (downloadState !is DownloadState.Downloading && downloadState !is DownloadState.Idle) {
                 onDismiss()
             }
         },
@@ -113,6 +113,14 @@ fun DownloadProgressDialog(
                                     }
                                 }
                             }
+
+                            if (downloadState.currentFile > 0 && downloadState.totalFiles > 0) {
+                                Text(
+                                    text = "文件 ${downloadState.currentFile}/${downloadState.totalFiles}",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
 
@@ -140,6 +148,15 @@ fun DownloadProgressDialog(
                         Text(
                             text = downloadState.error,
                             fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    is DownloadState.Cancelled -> {
+                        Text(
+                            text = "下载已取消",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -174,7 +191,7 @@ fun DownloadProgressDialog(
                         }
                     }
 
-                    is DownloadState.Failed -> {
+                    is DownloadState.Cancelled, is DownloadState.Failed -> {
                         Button(onClick = onDismiss) {
                             Text(strings.save)
                         }
@@ -191,28 +208,6 @@ fun DownloadProgressDialog(
     )
 }
 
-/**
- * 格式化下载速度
- */
-private fun formatSpeed(bytesPerSecond: Long): String {
-    return when {
-        bytesPerSecond < 1024 -> "$bytesPerSecond B/s"
-        bytesPerSecond < 1024 * 1024 -> "${bytesPerSecond / 1024} KB/s"
-        else -> "${"%.1f".format(bytesPerSecond / (1024.0 * 1024.0))} MB/s"
-    }
-}
-
-/**
- * 格式化字节数
- */
-private fun formatBytes(bytes: Long): String {
-    return when {
-        bytes < 1024 -> "$bytes B"
-        bytes < 1024 * 1024 -> "${"%.1f".format(bytes / 1024.0)} KB"
-        bytes < 1024 * 1024 * 1024 -> "${"%.1f".format(bytes / (1024.0 * 1024.0))} MB"
-        else -> "${"%.2f".format(bytes / (1024.0 * 1024.0 * 1024.0))} GB"
-    }
-}
 
 /**
  * 格式化时间（秒）为人类可读字符串
