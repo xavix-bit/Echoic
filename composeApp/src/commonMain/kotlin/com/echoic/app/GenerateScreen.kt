@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -28,9 +27,11 @@ import com.echoic.shared.engine.SynthesisRequest
 import com.echoic.shared.engine.SynthesisSelection
 import com.echoic.shared.engine.SynthesisSession
 import com.echoic.shared.engine.TTSError
+import com.echoic.shared.model.LocalTTSVoice
 import com.echoic.shared.model.LocalTTSProvider
 import com.echoic.shared.model.TTSProvider
 import com.echoic.shared.model.Voice
+import com.echoic.shared.model.availableVoices
 import kotlinx.coroutines.launch
 
 enum class SynthesisMode { CLOUD, LOCAL }
@@ -66,6 +67,7 @@ fun GenerateScreen(
     var mode by remember { mutableStateOf(initialMode) }
     var inputText by remember { mutableStateOf("") }
     var selectedVoice by remember { mutableStateOf<Voice?>(null) }
+    var selectedLocalVoice by remember { mutableStateOf<LocalTTSVoice?>(null) }
     var isSynthesizing by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var audioData by remember { mutableStateOf<ByteArray?>(null) }
@@ -83,10 +85,24 @@ fun GenerateScreen(
     val isCloudConfigured = cloudProvider != null && config.isProviderConfigured(cloudProvider)
 
     // Determine local provider status
-    val localProvider = defaultLocal
     val localModelManager = remember { com.echoic.shared.model.LocalModelManager() }
+    val installedSupportedLocal = remember(localEngine) {
+        LocalTTSProvider.supportedEntries.firstOrNull { provider ->
+            localEngine?.supports(provider) == true && localModelManager.isModelInstalled(provider)
+        }
+    }
+    val localProvider = when {
+        defaultLocal != null && localEngine?.supports(defaultLocal) == true -> defaultLocal
+        installedSupportedLocal != null -> installedSupportedLocal
+        else -> defaultLocal
+    }
     val isLocalInstalled = localProvider != null && localModelManager.isModelInstalled(localProvider)
     val isLocalSupported = localProvider != null && localEngine != null && localEngine.supports(localProvider)
+    val localVoices = localProvider?.availableVoices.orEmpty()
+
+    LaunchedEffect(localProvider) {
+        selectedLocalVoice = localVoices.firstOrNull()
+    }
 
     val canGenerate = when (mode) {
         SynthesisMode.CLOUD -> cloudProvider != null && isCloudConfigured
@@ -94,21 +110,22 @@ fun GenerateScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         // ── Header ──────────────────────────────────────────────
         Text(
             text = strings.generateSpeechTitle,
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground,
             letterSpacing = (-0.3).sp,
         )
         Text(
             text = strings.generateSpeechDesc,
-            fontSize = 14.sp,
+            fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = 20.sp,
         )
 
         // ── Mode Toggle ─────────────────────────────────────────
@@ -126,13 +143,13 @@ fun GenerateScreen(
 
             ModeToggleChip(
                 label = strings.cloud,
-                emoji = "☁",
+                code = "CL",
                 isSelected = mode == SynthesisMode.CLOUD,
                 onClick = { mode = SynthesisMode.CLOUD },
             )
             ModeToggleChip(
                 label = strings.local,
-                emoji = "💻",
+                code = "LC",
                 isSelected = mode == SynthesisMode.LOCAL,
                 onClick = { mode = SynthesisMode.LOCAL },
             )
@@ -168,7 +185,7 @@ fun GenerateScreen(
                             else -> strings.installed
                         },
                         subtitleColor = when {
-                            !isLocalSupported -> MaterialTheme.colorScheme.outline
+                            !isLocalSupported -> MaterialTheme.colorScheme.error
                             !isLocalInstalled -> MaterialTheme.colorScheme.onSurfaceVariant
                             else -> MaterialTheme.colorScheme.tertiary
                         },
@@ -206,6 +223,13 @@ fun GenerateScreen(
                 }
             }
         }
+        if (mode == SynthesisMode.LOCAL && localProvider != null && isLocalInstalled && isLocalSupported) {
+            LocalVoiceDropdown(
+                voices = localVoices,
+                selectedVoice = selectedLocalVoice,
+                onVoiceSelected = { selectedLocalVoice = it },
+            )
+        }
 
         // ── API Key / Install warning ──────────────────────────
         if (mode == SynthesisMode.CLOUD && cloudProvider != null && !isCloudConfigured) {
@@ -230,7 +254,15 @@ fun GenerateScreen(
             },
             modifier = Modifier.fillMaxWidth().weight(1f).heightIn(min = 120.dp),
             placeholder = { Text(strings.textPlaceholder) },
-            shape = RoundedCornerShape(12.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp, lineHeight = 22.sp),
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.72f),
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                cursorColor = MaterialTheme.colorScheme.primary,
+            ),
         )
 
         // ── Bottom action bar ──────────────────────────────────
@@ -275,7 +307,10 @@ fun GenerateScreen(
                                     SynthesisMode.LOCAL -> {
                                         SynthesisRequest(
                                             text = inputText,
-                                            selection = SynthesisSelection.Local(localProvider!!),
+                                            selection = SynthesisSelection.Local(
+                                                provider = localProvider!!,
+                                                voiceId = selectedLocalVoice?.id ?: 0,
+                                            ),
                                         )
                                     }
                                 }
@@ -313,7 +348,16 @@ fun GenerateScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("⚠", color = MaterialTheme.colorScheme.error)
+                    Text(
+                        text = "!",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.error.copy(alpha = 0.12f))
+                            .padding(horizontal = 7.dp, vertical = 2.dp),
+                    )
                     Text(msg, fontSize = 13.sp, color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.weight(1f))
                     TextButton(onClick = { errorMessage = null }) { Text(strings.dismiss) }
@@ -333,7 +377,7 @@ fun GenerateScreen(
 @Composable
 private fun ModeToggleChip(
     label: String,
-    emoji: String,
+    code: String,
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -353,7 +397,19 @@ private fun ModeToggleChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(emoji, fontSize = 14.sp)
+            Text(
+                text = code,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = contentColor,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(
+                        if (isSelected) contentColor.copy(alpha = 0.16f)
+                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            )
             Text(
                 text = label,
                 fontSize = 13.sp,
@@ -565,15 +621,17 @@ private fun AudioPlayerBar(audioPlayer: AudioPlayer) {
             // Rounded play/pause button
             Box(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
+                    .height(34.dp)
+                    .width(58.dp)
+                    .clip(RoundedCornerShape(18.dp))
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
                     .clickable { if (isPlaying) audioPlayer.pause() else audioPlayer.resume() },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = if (isPlaying) "⏸" else "▶",
-                    fontSize = 14.sp,
+                    text = if (isPlaying) "Pause" else "Play",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary,
                 )
             }

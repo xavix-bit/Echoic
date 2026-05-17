@@ -113,7 +113,7 @@ fun ProvidersScreen(
                 modifier = Modifier.clip(RoundedCornerShape(12.dp)),
             ) {
                 Text(
-                    text = "☁ ${strings.cloudModels}",
+                    text = strings.cloudModels,
                     fontSize = 13.sp,
                     fontWeight = if (selectedTab == ProviderTab.CLOUD) FontWeight.SemiBold else FontWeight.Normal,
                     modifier = Modifier.padding(vertical = 12.dp),
@@ -125,7 +125,7 @@ fun ProvidersScreen(
                 modifier = Modifier.clip(RoundedCornerShape(12.dp)),
             ) {
                 Text(
-                    text = "💻 ${strings.localModels}",
+                    text = strings.localModels,
                     fontSize = 13.sp,
                     fontWeight = if (selectedTab == ProviderTab.LOCAL) FontWeight.SemiBold else FontWeight.Normal,
                     modifier = Modifier.padding(vertical = 12.dp),
@@ -349,7 +349,7 @@ private fun CloudTabContent(
                 }
                 if (selectedTags.isNotEmpty()) {
                     TextButton(onClick = onClearTags) {
-                        Text("✕ ${strings.clearAll}", fontSize = 11.sp)
+                        Text(strings.clearAll, fontSize = 11.sp)
                     }
                 }
             }
@@ -457,7 +457,7 @@ private fun CloudProviderCard(
                         shape = RoundedCornerShape(8.dp),
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                     ) {
-                        Text("✕", fontSize = 10.sp)
+                        Text(strings.cancel, fontSize = 10.sp)
                     }
                 } else {
                     Button(
@@ -571,7 +571,7 @@ private fun CloudConfigSection(provider: TTSProvider, config: AppConfig, onUpdat
                                 textStyle = LocalTextStyle.current.copy(fontSize = 11.sp),
                             )
                             IconButton(onClick = { showKey = !showKey }, modifier = Modifier.size(24.dp)) {
-                                Text(if (showKey) "🙈" else "👁", fontSize = 10.sp)
+                                Text(if (showKey) "Hide" else "Show", fontSize = 9.sp)
                             }
                         }
                     }
@@ -589,7 +589,7 @@ private fun CloudConfigSection(provider: TTSProvider, config: AppConfig, onUpdat
             }
         }
         provider.helpURL?.let { url ->
-            Text("${strings.getApiKey} ↗", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary,
+            Text(strings.getApiKey, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.clip(RoundedCornerShape(4.dp)).clickable { openUrl(url) }.padding(vertical = 2.dp))
         }
         Row { Spacer(Modifier.weight(1f))
@@ -767,7 +767,7 @@ private fun LocalProviderCard(
                         onClick = { config.setDefaultLocalProvider(null) },
                         shape = RoundedCornerShape(8.dp),
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    ) { Text("✕", fontSize = 10.sp) }
+                    ) { Text(strings.cancel, fontSize = 10.sp) }
                 } else {
                     Button(
                         onClick = { config.setDefaultLocalProvider(provider) },
@@ -893,7 +893,7 @@ private fun LocalProviderCard(
                     provider.githubURL?.let { url ->
                         OutlinedButton(onClick = { openUrl(url) }, modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp)) {
-                            Text("${strings.viewOnGitHub} ↗", fontSize = 12.sp)
+                            Text(strings.viewOnGitHub, fontSize = 12.sp)
                         }
                     }
                 }

@@ -3,6 +3,7 @@ package com.echoic.shared.platform
 import java.io.*
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import java.util.zip.GZIPInputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -95,6 +96,9 @@ actual fun platformFileOutputStream(file: PlatformFile, append: Boolean): Platfo
 
 actual fun platformGzipInputStream(input: PlatformInputStream): PlatformInputStream =
     PlatformInputStream(GZIPInputStream(BufferedInputStream(input.jvmStream)))
+
+actual fun platformBZip2InputStream(input: PlatformInputStream): PlatformInputStream =
+    PlatformInputStream(BZip2CompressorInputStream(BufferedInputStream(input.jvmStream)))
 
 actual fun platformZipInputStream(input: PlatformInputStream): PlatformZipInputStream =
     PlatformZipInputStream(ZipInputStream(BufferedInputStream(input.jvmStream)))

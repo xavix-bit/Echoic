@@ -56,6 +56,7 @@ expect class PlatformOutputStream {
 expect fun platformFileInputStream(file: PlatformFile): PlatformInputStream
 expect fun platformFileOutputStream(file: PlatformFile, append: Boolean): PlatformOutputStream
 expect fun platformGzipInputStream(input: PlatformInputStream): PlatformInputStream
+expect fun platformBZip2InputStream(input: PlatformInputStream): PlatformInputStream
 expect fun platformZipInputStream(input: PlatformInputStream): PlatformZipInputStream
 
 expect class PlatformRandomAccessFile(file: PlatformFile, mode: String) {

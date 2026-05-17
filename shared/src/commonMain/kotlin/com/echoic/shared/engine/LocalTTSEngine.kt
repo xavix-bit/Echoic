@@ -28,6 +28,7 @@ interface LocalTTSEngine {
     suspend fun synthesize(
         text: String,
         provider: LocalTTSProvider,
+        voiceId: Int = 0,
         format: AudioFormat = AudioFormat.WAV,
     ): LocalSynthesisResult
 

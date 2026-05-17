@@ -16,8 +16,8 @@ class DownloadConfigTest {
         assertEquals(
             listOf(
                 DownloadFile(
-                    relativePath = "kokoro-multi-lang-v1_0.tar.gz",
-                    url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.gz",
+                    relativePath = "kokoro-multi-lang-v1_0.tar.bz2",
+                    url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2",
                 )
             ),
             files,

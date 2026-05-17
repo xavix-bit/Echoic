@@ -52,9 +52,10 @@ fun App(config: AppConfig) {
         CompositionLocalProvider(LocalStrings provides stringsFor(configData.language)) {
             Surface(
                 modifier = Modifier.fillMaxSize().padding(12.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(22.dp),
                 color = MaterialTheme.colorScheme.background,
-                shadowElevation = 12.dp,
+                tonalElevation = 2.dp,
+                shadowElevation = 16.dp,
             ) {
                 Box(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxSize()) {
@@ -73,7 +74,7 @@ fun App(config: AppConfig) {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(40.dp)
-                                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.86f))
+                                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
                                         .padding(horizontal = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
@@ -104,7 +105,7 @@ fun App(config: AppConfig) {
                                     )
                                 }
 
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.42f))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.26f))
 
                                 // Screen content with crossfade transition
                                 Box(modifier = Modifier.weight(1f)) {

@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.Image
@@ -46,16 +47,16 @@ fun Sidebar(
     val strings = LocalStrings.current
 
     val items = listOf(
-        SidebarItem(Screen.HOME, "🏠", strings.home),
-        SidebarItem(Screen.GENERATE, "🎙", strings.generateSpeechTitle),
-        SidebarItem(Screen.PROVIDERS, "⚙", strings.providers),
+        SidebarItem(Screen.HOME, "H", strings.home),
+        SidebarItem(Screen.GENERATE, "G", strings.generateSpeechTitle),
+        SidebarItem(Screen.PROVIDERS, "P", strings.providers),
     )
 
     // Smooth spring-animated width transition
     val animatedWidth by animateDpAsState(
         targetValue = if (expanded) 180.dp else 64.dp,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
+            dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium,
         ),
         label = "sidebarWidth",
@@ -87,8 +88,8 @@ fun Sidebar(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = expandHorizontally(expandFrom = Alignment.Start),
-                exit = shrinkHorizontally(shrinkTowards = Alignment.Start),
+                enter = expandHorizontally(expandFrom = Alignment.Start, animationSpec = tween(180)),
+                exit = shrinkHorizontally(shrinkTowards = Alignment.Start, animationSpec = tween(120)),
             ) {
                 Text(
                     text = "Echoic",
@@ -125,7 +126,7 @@ fun Sidebar(
 
         // Settings — bottom
         SidebarNavItem(
-            item = SidebarItem(Screen.HOME, "⚙", strings.settings),
+            item = SidebarItem(Screen.HOME, "S", strings.settings),
             isActive = false,
             expanded = expanded,
             onClick = onOpenSettings,
@@ -190,14 +191,23 @@ private fun SidebarNavItem(
         ) {
             Text(
                 text = item.icon,
-                fontSize = 18.sp,
-                color = contentColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isActive) MaterialTheme.colorScheme.onPrimary else contentColor,
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(
+                        if (isActive) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+                    )
+                    .wrapContentSize(Alignment.Center),
             )
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = expandHorizontally(expandFrom = Alignment.Start),
-                exit = shrinkHorizontally(shrinkTowards = Alignment.Start),
+                enter = expandHorizontally(expandFrom = Alignment.Start, animationSpec = tween(180)),
+                exit = shrinkHorizontally(shrinkTowards = Alignment.Start, animationSpec = tween(120)),
             ) {
                 Text(
                     text = item.label,

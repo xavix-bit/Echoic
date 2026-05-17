@@ -17,7 +17,7 @@ import javax.sound.sampled.SourceDataLine
  * Desktop audio player using javax.sound.
  * Supports WAV natively. For MP3/other formats, falls back to basic playback.
  */
-actual class AudioPlayer {
+actual class AudioPlayer actual constructor() {
     private var clip: Clip? = null
     private var line: SourceDataLine? = null
     private var stream: javax.sound.sampled.AudioInputStream? = null
@@ -172,9 +172,13 @@ actual class AudioPlayer {
     private fun startTimer() {
         stopTimer()
         timerThread = Thread {
-            while (_isPlaying.value) {
-                _currentTime.value = (clip?.microsecondPosition ?: 0) / 1_000_000.0
-                Thread.sleep(100)
+            try {
+                while (_isPlaying.value && !Thread.currentThread().isInterrupted) {
+                    _currentTime.value = (clip?.microsecondPosition ?: 0) / 1_000_000.0
+                    Thread.sleep(100)
+                }
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
             }
         }.apply { isDaemon = true; start() }
     }

@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
  * Cross-platform audio player interface.
  * Platform-specific implementations via expect/actual.
  */
-expect class AudioPlayer {
+expect class AudioPlayer() {
     /** Whether audio is currently playing */
     val isPlaying: StateFlow<Boolean>
 

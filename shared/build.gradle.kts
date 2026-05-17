@@ -26,6 +26,7 @@ kotlin {
                 implementation(libs.jna)
                 implementation(libs.mp3spi)
                 implementation(libs.mp3spi.spi)
+                implementation(libs.commons.compress)
 
                 // Sherpa-ONNX native libraries (bundled .dylib/.so/.dll inside JAR)
                 implementation(files("libs/sherpa-onnx-native-lib-osx-aarch64-v1.13.0.jar"))

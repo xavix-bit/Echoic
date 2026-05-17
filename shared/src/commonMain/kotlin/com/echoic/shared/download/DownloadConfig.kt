@@ -29,7 +29,7 @@ object DownloadConfig {
     // Kokoro ONNX 模型来自 sherpa-onnx releases（tar.gz 归档）
     // 内含: model.onnx, voices.bin, tokens.txt, espeak-ng-data/, lexicon-*.txt, dict/
     private val kokoroReleaseUrl =
-        "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.gz"
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2"
 
     private val sherpaFiles = listOf(
         "vits-zh-hf-fanchen-unity.onnx",
@@ -76,7 +76,7 @@ object DownloadConfig {
                 // Kokoro 从 sherpa-onnx releases 下载归档包
                 return listOf(
                     DownloadFile(
-                        relativePath = "kokoro-multi-lang-v1_0.tar.gz",
+                    relativePath = "kokoro-multi-lang-v1_0.tar.bz2",
                         url = kokoroReleaseUrl,
                     )
                 )

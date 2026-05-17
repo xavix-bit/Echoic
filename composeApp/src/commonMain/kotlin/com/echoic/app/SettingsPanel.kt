@@ -88,7 +88,7 @@ fun SettingsOverlay(
                             )
                         }
                         IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                            Text("✕", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Close", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
@@ -151,7 +151,7 @@ fun SettingsOverlay(
                                 subtitle = "~/.echoic/",
                             ) {
                                 OutlinedButton(
-                                    onClick = { openUrl(com.echoic.shared.platform.platformHomeDirectory() + "/.echoic") },
+                                    onClick = { openUrl(echoicDataDirectory()) },
                                     shape = RoundedCornerShape(8.dp),
                                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                                 ) {
@@ -212,7 +212,7 @@ fun SettingsOverlay(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(8.dp),
                             ) {
-                                Text("GitHub ↗", fontSize = 12.sp)
+                                Text("GitHub", fontSize = 12.sp)
                             }
                         }
 

@@ -12,6 +12,7 @@ import com.echoic.shared.platform.PlatformInputStream
 import com.echoic.shared.platform.PlatformZipInputStream
 import com.echoic.shared.platform.platformFileInputStream
 import com.echoic.shared.platform.platformFileOutputStream
+import com.echoic.shared.platform.platformBZip2InputStream
 import com.echoic.shared.platform.platformGzipInputStream
 import com.echoic.shared.platform.platformZipInputStream
 import kotlinx.coroutines.CancellationException
@@ -163,6 +164,8 @@ class ModelInstaller(
 
         val archiveFile = downloadedFiles.find { file ->
             file.name.endsWith(".tar.gz") ||
+                file.name.endsWith(".tar.bz2") ||
+                file.name.endsWith(".tbz2") ||
                 file.name.endsWith(".zip") ||
                 file.name.endsWith(".gz")
         }
@@ -284,6 +287,9 @@ class ModelInstaller(
                 archivePath.endsWith(".tar.gz") || archivePath.endsWith(".tgz") -> {
                     extractTarGz(archiveFile, destDir, onProgress)
                 }
+                archivePath.endsWith(".tar.bz2") || archivePath.endsWith(".tbz2") -> {
+                    extractTarBz2(archiveFile, destDir, onProgress)
+                }
                 archivePath.endsWith(".zip") -> {
                     extractZip(archiveFile, destDir, onProgress)
                 }
@@ -297,15 +303,41 @@ class ModelInstaller(
         }
     }
 
+    private fun extractTarBz2(
+        archiveFile: PlatformFile,
+        destDir: PlatformFile,
+        onProgress: (Float) -> Unit,
+    ) {
+        extractTar(
+            input = platformBZip2InputStream(platformFileInputStream(archiveFile)),
+            totalSize = archiveFile.length(),
+            destDir = destDir,
+            onProgress = onProgress,
+        )
+    }
+
     private fun extractTarGz(
         archiveFile: PlatformFile,
         destDir: PlatformFile,
         onProgress: (Float) -> Unit,
     ) {
-        val totalSize = archiveFile.length()
+        extractTar(
+            input = platformGzipInputStream(platformFileInputStream(archiveFile)),
+            totalSize = archiveFile.length(),
+            destDir = destDir,
+            onProgress = onProgress,
+        )
+    }
+
+    private fun extractTar(
+        input: PlatformInputStream,
+        totalSize: Long,
+        destDir: PlatformFile,
+        onProgress: (Float) -> Unit,
+    ) {
         var bytesRead = 0L
 
-        val gzis = platformGzipInputStream(platformFileInputStream(archiveFile))
+        val gzis = input
         try {
             val buffer = ByteArray(8192)
             val headerBuffer = ByteArray(512)

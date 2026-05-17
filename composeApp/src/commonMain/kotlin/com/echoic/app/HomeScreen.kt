@@ -51,7 +51,7 @@ fun HomeScreen(
         )
 
         // ── Quick Actions ────────────────────────────────────
-        SectionTitle(icon = "⚡", title = strings.quickActions)
+        SectionTitle(marker = "01", title = strings.quickActions)
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -59,14 +59,14 @@ fun HomeScreen(
         ) {
             QuickActionCard(
                 modifier = Modifier.weight(1f),
-                icon = "🎙",
+                icon = "G",
                 label = strings.startGenerating,
                 description = strings.generateSpeechDesc,
                 onClick = { onNavigate(Screen.GENERATE) },
             )
             QuickActionCard(
                 modifier = Modifier.weight(1f),
-                icon = "☁",
+                icon = "P",
                 label = strings.manageProviders,
                 description = strings.cloudServicesDesc,
                 onClick = { onNavigate(Screen.PROVIDERS) },
@@ -74,7 +74,7 @@ fun HomeScreen(
         }
 
         // ── Stats Overview ───────────────────────────────────
-        SectionTitle(icon = "📊", title = strings.totalUsage)
+        SectionTitle(marker = "02", title = strings.totalUsage)
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -82,17 +82,17 @@ fun HomeScreen(
         ) {
             StatCard(
                 modifier = Modifier.weight(1f),
-                icon = "📊",
+                icon = "R",
                 label = strings.totalUsage,
                 value = stats.totalUsageCount.toString(),
-                accent = Color(0xFF6366F1),
+                accent = MaterialTheme.colorScheme.primary,
             )
             StatCard(
                 modifier = Modifier.weight(1f),
-                icon = "📝",
+                icon = "C",
                 label = strings.totalCharacters,
                 value = formatNumber(stats.totalCharacters),
-                accent = Color(0xFF10B981),
+                accent = MaterialTheme.colorScheme.tertiary,
             )
         }
 
@@ -102,22 +102,22 @@ fun HomeScreen(
         ) {
             StatCard(
                 modifier = Modifier.weight(1f),
-                icon = "☁️",
+                icon = "C",
                 label = strings.mostUsedCloud,
                 value = mostUsedCloud ?: "-",
-                accent = Color(0xFF3B82F6),
+                accent = MaterialTheme.colorScheme.primary,
             )
             StatCard(
                 modifier = Modifier.weight(1f),
-                icon = "💾",
+                icon = "L",
                 label = strings.mostUsedLocal,
                 value = mostUsedLocal ?: "-",
-                accent = Color(0xFFF59E0B),
+                accent = MaterialTheme.colorScheme.tertiary,
             )
         }
 
         // ── Recent Usage ─────────────────────────────────────
-        SectionTitle(icon = "🕐", title = strings.recentUsage)
+        SectionTitle(marker = "03", title = strings.recentUsage)
 
         if (lastUsedProvider != null && lastUsedTime != null) {
             RecentUsageItem(
@@ -229,12 +229,21 @@ private fun HeroMetric(value: String, label: String) {
 // ─── Section Title ────────────────────────────────────────────────
 
 @Composable
-private fun SectionTitle(icon: String, title: String) {
+private fun SectionTitle(marker: String, title: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(text = icon, fontSize = 16.sp)
+        Text(
+            text = marker,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+        )
         Text(
             text = title,
             fontSize = 13.sp,
@@ -248,6 +257,27 @@ private fun SectionTitle(icon: String, title: String) {
 // ─── Quick Action Card ────────────────────────────────────────────
 
 @Composable
+private fun AccentBadge(
+    label: String,
+    color: Color,
+) {
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(color.copy(alpha = 0.14f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = color,
+        )
+    }
+}
+
+@Composable
 private fun QuickActionCard(
     modifier: Modifier = Modifier,
     icon: String,
@@ -259,7 +289,7 @@ private fun QuickActionCard(
     val isHovered by interactionSource.collectIsHoveredAsState()
     val scale by animateFloatAsState(
         targetValue = if (isHovered) 1.02f else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        animationSpec = tween(180),
         label = "scale",
     )
 
@@ -285,7 +315,7 @@ private fun QuickActionCard(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(icon, fontSize = 24.sp)
+            AccentBadge(label = icon, color = MaterialTheme.colorScheme.primary)
             Text(
                 text = label,
                 fontSize = 14.sp,
@@ -325,12 +355,7 @@ private fun StatCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Box(
-                    modifier = Modifier.size(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(accent),
-                )
-                Text(text = icon, fontSize = 20.sp)
+                AccentBadge(label = icon, color = accent)
             }
 
             Spacer(Modifier.height(10.dp))

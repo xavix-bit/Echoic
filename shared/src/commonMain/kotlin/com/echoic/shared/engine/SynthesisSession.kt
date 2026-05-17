@@ -15,6 +15,7 @@ sealed class SynthesisSelection {
 
     data class Local(
         val provider: LocalTTSProvider,
+        val voiceId: Int = 0,
     ) : SynthesisSelection()
 }
 
@@ -46,6 +47,7 @@ interface LocalSynthesisGateway {
     suspend fun synthesize(
         text: String,
         provider: LocalTTSProvider,
+        voiceId: Int = 0,
         format: AudioFormat = AudioFormat.WAV,
     ): LocalSynthesisResult
 
@@ -76,8 +78,9 @@ class EngineLocalSynthesisGateway(
     override suspend fun synthesize(
         text: String,
         provider: LocalTTSProvider,
+        voiceId: Int,
         format: AudioFormat,
-    ): LocalSynthesisResult = engine.synthesize(text, provider, format)
+    ): LocalSynthesisResult = engine.synthesize(text, provider, voiceId, format)
 
     override fun cancel() {
         engine.cancel()
@@ -124,7 +127,7 @@ class SynthesisSession(
         require(gateway.supports(selection.provider)) {
             "当前不支持 ${selection.provider.displayName} 的本地合成。"
         }
-        val result = gateway.synthesize(text, selection.provider, AudioFormat.WAV)
+        val result = gateway.synthesize(text, selection.provider, selection.voiceId, AudioFormat.WAV)
 
         return SynthesisResult(
             audioData = result.audioData,

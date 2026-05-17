@@ -22,3 +22,6 @@ actual fun openUrl(url: String) {
         } catch (_: Exception) {}
     }
 }
+
+actual fun echoicDataDirectory(): String =
+    "${System.getProperty("user.home")}/.echoic"

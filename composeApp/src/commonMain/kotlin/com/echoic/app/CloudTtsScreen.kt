@@ -32,11 +32,13 @@ import com.echoic.shared.installer.InstallState
 import com.echoic.shared.installer.ModelInstaller
 import com.echoic.shared.model.LocalModelManager
 import com.echoic.shared.model.LocalTTSProvider
+import com.echoic.shared.model.LocalTTSVoice
 import com.echoic.shared.model.ProviderCatalog
 import com.echoic.shared.model.ProviderOption
 import com.echoic.shared.model.TTSProvider
 import com.echoic.shared.model.TTSTag
 import com.echoic.shared.model.Voice
+import com.echoic.shared.model.availableVoices
 import kotlinx.coroutines.launch
 
 sealed class ModelSelection {
@@ -68,6 +70,7 @@ fun CloudTtsScreen(
     var inputText by remember { mutableStateOf("") }
     var modelSelection by remember { mutableStateOf<ModelSelection>(ModelSelection.Cloud(TTSProvider.FISH_AUDIO)) }
     var selectedVoice by remember { mutableStateOf(Voice.FISH_DEFAULT) }
+    var selectedLocalVoice by remember { mutableStateOf<LocalTTSVoice?>(null) }
     var isSynthesizing by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var audioData by remember { mutableStateOf<ByteArray?>(null) }
@@ -96,6 +99,8 @@ fun CloudTtsScreen(
 
     // Current model state
     val currentCloudProvider = (modelSelection as? ModelSelection.Cloud)?.provider
+    val currentLocalProvider = (modelSelection as? ModelSelection.Local)?.provider
+    val localVoices = currentLocalProvider?.availableVoices.orEmpty()
     val isConfigured = remember(configData, modelSelection) {
         when (val sel = modelSelection) {
             is ModelSelection.Cloud -> config.isProviderConfigured(sel.provider)
@@ -110,6 +115,10 @@ fun CloudTtsScreen(
             is ModelSelection.Cloud -> isConfigured
             is ModelSelection.Local -> isLocalInstalled && localEngine != null && localEngine.supports(sel.provider)
         }
+    }
+
+    LaunchedEffect(currentLocalProvider) {
+        selectedLocalVoice = localVoices.firstOrNull()
     }
 
     Column(
@@ -144,7 +153,7 @@ fun CloudTtsScreen(
 
             Box {
                 Text(
-                    text = "🏷 ${strings.filterTags} ▾",
+                    text = "${strings.filterTags} ▾",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     color = if (showTagFilter) MaterialTheme.colorScheme.primary
@@ -182,7 +191,7 @@ fun CloudTtsScreen(
                         }
                         if (selectedTags.isNotEmpty()) {
                             TextButton(onClick = { selectedTags = setOf() }) {
-                                Text("✕ ${strings.clearAll}", fontSize = 11.sp)
+                                Text(strings.clearAll, fontSize = 11.sp)
                             }
                         }
                     }
@@ -252,6 +261,13 @@ fun CloudTtsScreen(
                     )
                 }
             }
+        }
+        if (currentLocalProvider != null && isLocalInstalled && canGenerate) {
+            LocalVoiceDropdown(
+                voices = localVoices,
+                selectedVoice = selectedLocalVoice,
+                onVoiceSelected = { selectedLocalVoice = it },
+            )
         }
 
         // ── Config / download prompt ───────────────────────────
@@ -353,7 +369,10 @@ fun CloudTtsScreen(
                                     is ModelSelection.Local -> {
                                         SynthesisRequest(
                                             text = inputText,
-                                            selection = SynthesisSelection.Local(sel.provider),
+                                            selection = SynthesisSelection.Local(
+                                                provider = sel.provider,
+                                                voiceId = selectedLocalVoice?.id ?: 0,
+                                            ),
                                         )
                                     }
                                 }
@@ -388,7 +407,16 @@ fun CloudTtsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("⚠", color = MaterialTheme.colorScheme.error)
+                    Text(
+                        text = "!",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.error.copy(alpha = 0.12f))
+                            .padding(horizontal = 7.dp, vertical = 2.dp),
+                    )
                     Text(msg, fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = { errorMessage = null }) { Text(strings.dismiss) }
@@ -471,8 +499,17 @@ private fun ModelCard(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                text = if (isCloud) "☁️" else "💾",
-                fontSize = 18.sp,
+                text = if (isCloud) "CL" else "LC",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                        else MaterialTheme.colorScheme.surface
+                    )
+                    .padding(horizontal = 7.dp, vertical = 3.dp),
             )
             Text(
                 text = providerName,
@@ -714,9 +751,17 @@ private fun AudioPlayerBar(audioPlayer: AudioPlayer) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            IconButton(onClick = { if (isPlaying) audioPlayer.pause() else audioPlayer.resume() }) {
-                Text(if (isPlaying) "⏸" else "▶", fontSize = 16.sp)
-            }
+            Text(
+                text = if (isPlaying) "Pause" else "Play",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                    .clickable { if (isPlaying) audioPlayer.pause() else audioPlayer.resume() }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            )
             Text(text = formatTime(currentTime), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             LinearProgressIndicator(
                 progress = { if (duration > 0) (currentTime / duration).toFloat() else 0f },

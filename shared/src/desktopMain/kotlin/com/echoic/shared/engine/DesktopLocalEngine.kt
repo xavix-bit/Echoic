@@ -2,6 +2,7 @@ package com.echoic.shared.engine
 
 import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
+import com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
 import com.echoic.shared.model.AudioFormat
@@ -38,8 +39,7 @@ class DesktopLocalEngine : LocalTTSEngine {
     override fun supports(provider: LocalTTSProvider): Boolean {
         return when (provider) {
             LocalTTSProvider.SHERPA -> true
-            // Kokoro 需要 KokoroModelConfig，当前原生库不支持
-            LocalTTSProvider.KOKORO -> false
+            LocalTTSProvider.KOKORO -> true
             // VoxCPM 需要 Python + GPU，不适合内嵌
             LocalTTSProvider.VOXCPM -> false
             // VibeVoice 通过本地 REST API 调用
@@ -50,6 +50,7 @@ class DesktopLocalEngine : LocalTTSEngine {
     override suspend fun synthesize(
         text: String,
         provider: LocalTTSProvider,
+        voiceId: Int,
         format: AudioFormat,
     ): LocalSynthesisResult {
         cancelled = false
@@ -59,9 +60,77 @@ class DesktopLocalEngine : LocalTTSEngine {
         }
 
         return when (provider) {
-            LocalTTSProvider.SHERPA -> synthesizeViaSherpaOnnx(text, provider, format)
+            LocalTTSProvider.SHERPA -> synthesizeViaSherpaOnnx(text, provider, voiceId, format)
+            LocalTTSProvider.KOKORO -> synthesizeViaKokoro(text, provider, voiceId, format)
             LocalTTSProvider.VIBEVOICE -> synthesizeViaVibeVoice(text, provider, format)
             else -> throw UnsupportedOperationException("${provider.displayName} 暂不支持本地合成")
+        }
+    }
+
+    private suspend fun synthesizeViaKokoro(
+        text: String,
+        provider: LocalTTSProvider,
+        voiceId: Int,
+        format: AudioFormat,
+    ): LocalSynthesisResult = withContext(Dispatchers.IO) {
+        NativeLibLoader.load()
+
+        val modelDir = getModelDir(provider)
+        val modelFile = findFile(modelDir, ".onnx")
+            ?: throw IllegalStateException("找不到 ONNX 模型文件（.onnx）于 $modelDir")
+        val voicesFile = findFile(modelDir, "voices.bin")
+            ?: throw IllegalStateException("找不到 voices.bin 于 $modelDir")
+        val tokensFile = findFile(modelDir, "tokens.txt")
+            ?: throw IllegalStateException("找不到 tokens.txt 于 $modelDir")
+        val dataDir = findDataDir(modelDir)
+        val lexiconFiles = findFiles(modelDir) {
+            it.isFile && it.name.startsWith("lexicon", ignoreCase = true) && it.name.endsWith(".txt", ignoreCase = true)
+        }
+        val ruleFstsFiles = findFiles(modelDir) {
+            it.isFile && it.name.endsWith(".fst", ignoreCase = true)
+        }
+        val dictDir = findDictDir(modelDir)
+
+        val kokoroConfig = OfflineTtsKokoroModelConfig(
+            model = modelFile.absolutePath,
+            voices = voicesFile.absolutePath,
+            tokens = tokensFile.absolutePath,
+            dataDir = dataDir?.absolutePath ?: "",
+            lexicon = lexiconFiles.joinToString(",") { it.absolutePath },
+            dictDir = dictDir?.absolutePath ?: "",
+            lengthScale = 1.0f,
+        )
+
+        val modelConfig = OfflineTtsModelConfig(
+            kokoro = kokoroConfig,
+            numThreads = 2,
+            debug = false,
+            provider = "cpu",
+        )
+
+        val config = OfflineTtsConfig(
+            model = modelConfig,
+            ruleFsts = ruleFstsFiles.joinToString(",") { it.absolutePath },
+            maxNumSentences = 1,
+        )
+
+        val instance = OfflineTts(config)
+        tts = instance
+        try {
+            if (cancelled) throw kotlinx.coroutines.CancellationException("合成已取消")
+
+            val audio = instance.generate(text, sid = voiceId.coerceIn(0, 52), speed = 1.0f)
+
+            if (cancelled) throw kotlinx.coroutines.CancellationException("合成已取消")
+
+            LocalSynthesisResult(
+                audioData = floatArrayToWav(audio.samples, audio.sampleRate),
+                sampleRate = audio.sampleRate,
+                format = AudioFormat.WAV,
+            )
+        } finally {
+            instance.free()
+            tts = null
         }
     }
 
@@ -76,6 +145,7 @@ class DesktopLocalEngine : LocalTTSEngine {
     private suspend fun synthesizeViaSherpaOnnx(
         text: String,
         provider: LocalTTSProvider,
+        voiceId: Int,
         format: AudioFormat,
     ): LocalSynthesisResult = withContext(Dispatchers.IO) {
         // 确保原生库已加载
@@ -118,7 +188,7 @@ class DesktopLocalEngine : LocalTTSEngine {
         try {
             if (cancelled) throw kotlinx.coroutines.CancellationException("合成已取消")
 
-            val audio = instance.generate(text, sid = 0, speed = 1.0f)
+            val audio = instance.generate(text, sid = voiceId, speed = 1.0f)
 
             if (cancelled) throw kotlinx.coroutines.CancellationException("合成已取消")
 
@@ -209,6 +279,12 @@ class DesktopLocalEngine : LocalTTSEngine {
         }
     }
 
+    private fun findFiles(directory: String, predicate: (PlatformFile) -> Boolean): List<PlatformFile> {
+        val dir = PlatformFile(directory)
+        if (!dir.exists()) return emptyList()
+        return dir.walkTopDown().filter(predicate).toList()
+    }
+
     private fun findDataDir(modelDir: String): PlatformFile? {
         // 查找 espeak-ng-data 或其他数据目录
         val dir = PlatformFile(modelDir)
@@ -217,6 +293,14 @@ class DesktopLocalEngine : LocalTTSEngine {
             it.isDirectory &&
                 (it.name.contains("espeak", ignoreCase = true) ||
                  it.name.contains("data", ignoreCase = true))
+        }
+    }
+
+    private fun findDictDir(modelDir: String): PlatformFile? {
+        val dir = PlatformFile(modelDir)
+        if (!dir.exists()) return null
+        return dir.walkTopDown().firstOrNull {
+            it.isDirectory && it.name.contains("dict", ignoreCase = true)
         }
     }
 

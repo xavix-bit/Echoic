@@ -59,11 +59,12 @@ class SynthesisSessionTest {
         val result = session.synthesize(
             SynthesisRequest(
                 text = "你好",
-                selection = SynthesisSelection.Local(LocalTTSProvider.SHERPA),
+                selection = SynthesisSelection.Local(LocalTTSProvider.SHERPA, voiceId = 7),
             )
         )
 
         assertTrue(local.wasCalled)
+        assertEquals(7, local.voiceId)
         assertEquals(AudioFormat.WAV, result.format)
         assertContentEquals(byteArrayOf(9), result.audioData)
     }
@@ -93,15 +94,18 @@ class SynthesisSessionTest {
         private val result: LocalSynthesisResult = LocalSynthesisResult(byteArrayOf(), 16000, AudioFormat.WAV),
     ) : LocalSynthesisGateway {
         var wasCalled = false
+        var voiceId: Int? = null
 
         override fun supports(provider: LocalTTSProvider): Boolean = provider in supported
 
         override suspend fun synthesize(
             text: String,
             provider: LocalTTSProvider,
+            voiceId: Int,
             format: AudioFormat,
         ): LocalSynthesisResult {
             wasCalled = true
+            this.voiceId = voiceId
             return result
         }
 
