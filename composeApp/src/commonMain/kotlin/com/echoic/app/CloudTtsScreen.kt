@@ -30,9 +30,10 @@ import com.echoic.shared.engine.SynthesisSession
 import com.echoic.shared.engine.TTSError
 import com.echoic.shared.installer.InstallState
 import com.echoic.shared.installer.ModelInstaller
-import com.echoic.shared.model.AudioFormat
 import com.echoic.shared.model.LocalModelManager
 import com.echoic.shared.model.LocalTTSProvider
+import com.echoic.shared.model.ProviderCatalog
+import com.echoic.shared.model.ProviderOption
 import com.echoic.shared.model.TTSProvider
 import com.echoic.shared.model.TTSTag
 import com.echoic.shared.model.Voice
@@ -57,6 +58,7 @@ fun CloudTtsScreen(
     val downloadManager = remember { DownloadManager() }
     val localModelManager = remember { LocalModelManager() }
     val installer = remember { ModelInstaller(downloadManager, localModelManager) }
+    val providerCatalog = remember { ProviderCatalog() }
     val synthesisSession = remember(engine, localEngine) {
         SynthesisSession(
             cloudGateway = EngineCloudSynthesisGateway(engine),
@@ -79,25 +81,17 @@ fun CloudTtsScreen(
     val strings = LocalStrings.current
     val charCount = inputText.length
 
-    // Collect all available tags across all providers
-    val allTags = remember {
-        (TTSProvider.entries.flatMap { it.tags } + LocalTTSProvider.supportedEntries.flatMap { it.tags }).distinct()
-    }
-
-    // Filter models by selected tags
-    val filteredCloudProviders = remember(selectedTags) {
-        if (selectedTags.isEmpty()) TTSProvider.entries
-        else TTSProvider.entries.filter { p -> selectedTags.all { it in p.tags } }
-    }
-    val filteredLocalProviders = remember(selectedTags) {
-        if (selectedTags.isEmpty()) LocalTTSProvider.supportedEntries
-        else LocalTTSProvider.supportedEntries.filter { p -> selectedTags.all { it in p.tags } }
-    }
+    // Collect all available tags across provider catalog
+    val allTags = remember(providerCatalog) { providerCatalog.options().flatMap { it.tags }.distinct() }
 
     // Build unified model items list
-    val allItems = remember(filteredCloudProviders, filteredLocalProviders) {
-        filteredCloudProviders.map { ModelSelection.Cloud(it) } +
-            filteredLocalProviders.map { ModelSelection.Local(it) }
+    val allItems = remember(providerCatalog, selectedTags) {
+        providerCatalog.options(selectedTags).map { option ->
+            when (option) {
+                is ProviderOption.Cloud -> ModelSelection.Cloud(option.provider)
+                is ProviderOption.Local -> ModelSelection.Local(option.provider)
+            }
+        }
     }
 
     // Current model state

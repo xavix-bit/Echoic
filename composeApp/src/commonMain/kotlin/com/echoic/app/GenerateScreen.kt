@@ -28,7 +28,6 @@ import com.echoic.shared.engine.SynthesisRequest
 import com.echoic.shared.engine.SynthesisSelection
 import com.echoic.shared.engine.SynthesisSession
 import com.echoic.shared.engine.TTSError
-import com.echoic.shared.model.AudioFormat
 import com.echoic.shared.model.LocalTTSProvider
 import com.echoic.shared.model.TTSProvider
 import com.echoic.shared.model.Voice
