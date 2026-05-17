@@ -59,10 +59,13 @@ class DesktopLocalEngine : LocalTTSEngine {
             "当前不支持 ${provider.displayName} 的本地合成。"
         }
 
+        val speakableText = normalizeLocalTtsText(text)
+        require(speakableText.isNotBlank()) { "没有可朗读的文本内容" }
+
         return when (provider) {
-            LocalTTSProvider.SHERPA -> synthesizeViaSherpaOnnx(text, provider, voiceId, format)
-            LocalTTSProvider.KOKORO -> synthesizeViaKokoro(text, provider, voiceId, format)
-            LocalTTSProvider.VIBEVOICE -> synthesizeViaVibeVoice(text, provider, format)
+            LocalTTSProvider.SHERPA -> synthesizeViaSherpaOnnx(speakableText, provider, voiceId, format)
+            LocalTTSProvider.KOKORO -> synthesizeViaKokoro(speakableText, provider, voiceId, format)
+            LocalTTSProvider.VIBEVOICE -> synthesizeViaVibeVoice(speakableText, provider, format)
             else -> throw UnsupportedOperationException("${provider.displayName} 暂不支持本地合成")
         }
     }
@@ -123,9 +126,10 @@ class DesktopLocalEngine : LocalTTSEngine {
 
             if (cancelled) throw kotlinx.coroutines.CancellationException("合成已取消")
 
+            val sampleRate = validSampleRate(audio.sampleRate, instance.sampleRate(), KOKORO_DEFAULT_SAMPLE_RATE)
             LocalSynthesisResult(
-                audioData = floatArrayToWav(audio.samples, audio.sampleRate),
-                sampleRate = audio.sampleRate,
+                audioData = floatArrayToWav(audio.samples, sampleRate),
+                sampleRate = sampleRate,
                 format = AudioFormat.WAV,
             )
         } finally {
@@ -192,11 +196,12 @@ class DesktopLocalEngine : LocalTTSEngine {
 
             if (cancelled) throw kotlinx.coroutines.CancellationException("合成已取消")
 
-            val wavBytes = floatArrayToWav(audio.samples, audio.sampleRate)
+            val sampleRate = validSampleRate(audio.sampleRate, instance.sampleRate(), SHERPA_DEFAULT_SAMPLE_RATE)
+            val wavBytes = floatArrayToWav(audio.samples, sampleRate)
 
             LocalSynthesisResult(
                 audioData = wavBytes,
-                sampleRate = audio.sampleRate,
+                sampleRate = sampleRate,
                 format = AudioFormat.WAV,
             )
         } finally {
@@ -311,6 +316,8 @@ class DesktopLocalEngine : LocalTTSEngine {
      * Sherpa-ONNX 输出样本范围 [-1.0, 1.0]，转为 16-bit PCM。
      */
     private fun floatArrayToWav(samples: FloatArray, sampleRate: Int): ByteArray {
+        require(sampleRate > 0) { "Invalid audio sample rate: $sampleRate" }
+
         val numSamples = samples.size
         val bitsPerSample = 16
         val numChannels = 1
@@ -360,5 +367,36 @@ class DesktopLocalEngine : LocalTTSEngine {
         }
 
         return bos.toByteArray()
+    }
+
+    private fun validSampleRate(vararg candidates: Int): Int =
+        candidates.firstOrNull { it > 0 }
+            ?: throw IllegalStateException("生成音频缺少有效采样率")
+
+    private fun normalizeLocalTtsText(text: String): String {
+        return text
+            .lines()
+            .mapNotNull { line ->
+                val cleaned = line
+                    .replace(Regex("""\[(.*?)]\((.*?)\)"""), "$1")
+                    .replace(Regex("""https?://\S+"""), "")
+                    .replace(Regex("""^[#>*\-\s`_]+"""), "")
+                    .filter { ch ->
+                        val type = Character.getType(ch)
+                        type != Character.SURROGATE.toInt() &&
+                            type != Character.OTHER_SYMBOL.toInt() &&
+                            type != Character.CONTROL.toInt()
+                    }
+                    .replace(Regex("""\s+"""), " ")
+                    .trim()
+                cleaned.takeIf { it.any { ch -> ch.isLetterOrDigit() } }
+            }
+            .joinToString("。")
+            .trim()
+    }
+
+    private companion object {
+        const val KOKORO_DEFAULT_SAMPLE_RATE = 24000
+        const val SHERPA_DEFAULT_SAMPLE_RATE = 16000
     }
 }

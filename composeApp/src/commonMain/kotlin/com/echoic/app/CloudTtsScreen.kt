@@ -358,6 +358,7 @@ fun CloudTtsScreen(
                         scope.launch {
                             isSynthesizing = true
                             errorMessage = null
+                            audioData = null
                             try {
                                 val request = when (val sel = modelSelection) {
                                     is ModelSelection.Cloud -> {
@@ -377,12 +378,13 @@ fun CloudTtsScreen(
                                     }
                                 }
                                 val result = synthesisSession.synthesize(request)
-                                audioData = result.audioData
                                 audioPlayer.play(result.audioData, result.format)
+                                audioData = result.audioData
                             } catch (e: TTSError) {
                                 errorMessage = e.message
                             } catch (e: Exception) {
                                 errorMessage = e.message ?: strings.localSynthesisFailed
+                                audioData = null
                             } finally {
                                 isSynthesizing = false
                             }
