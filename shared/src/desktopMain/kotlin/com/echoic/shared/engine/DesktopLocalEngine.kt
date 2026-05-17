@@ -5,9 +5,9 @@ import com.k2fsa.sherpa.onnx.OfflineTtsConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
 import com.echoic.shared.model.AudioFormat
+import com.echoic.shared.model.LocalModelInstallRepository
 import com.echoic.shared.model.LocalTTSProvider
 import com.echoic.shared.platform.PlatformFile
-import com.echoic.shared.platform.platformHomeDirectory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
@@ -22,6 +22,7 @@ import java.net.URL
  */
 class DesktopLocalEngine : LocalTTSEngine {
 
+    private val modelRepository = LocalModelInstallRepository()
     private var tts: OfflineTts? = null
     @Volatile private var cancelled = false
 
@@ -197,8 +198,7 @@ class DesktopLocalEngine : LocalTTSEngine {
     // ─── 模型文件查找 ────────────────────────────────────────────
 
     private fun getModelDir(provider: LocalTTSProvider): String {
-        val home = platformHomeDirectory()
-        return "$home/.echoic/models/${provider.name.lowercase()}"
+        return modelRepository.modelPath(provider)
     }
 
     private fun findFile(directory: String, suffix: String): PlatformFile? {

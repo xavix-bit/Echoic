@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Kami">
+<meta name="author" content="{{作者}}">
+<meta name="description" content="英文口语考试对话练习指南 · 三大话题 · 对话气泡演示">
+<meta name="keywords" content="口语考试, English Oral Exam, AI, Aerospace, Traditional Culture">
+<title>英文口语考试对话练习指南</title>
+<style>
+  @font-face { font-family: "TsangerJinKai02"; src: url("https://cdn.jsdelivr.net/gh/tw93/Kami@main/assets/fonts/TsangerJinKai02-W04.ttf") format("truetype"); font-weight: 400; }
+  @font-face { font-family: "TsangerJinKai02"; src: url("https://cdn.jsdelivr.net/gh/tw93/Kami@main/assets/fonts/TsangerJinKai02-W05.ttf") format("truetype"); font-weight: 500; }
+
+  @page {
+    size: 280mm 158mm;
+    margin: 0;
+    background: #f5f4ed;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --parchment:  #f5f4ed;
+    --ivory:      #faf9f5;
+    --near-black: #141413;
+    --dark-warm:  #3d3d3a;
+    --olive:      #504e49;
+    --stone:      #6b6a64;
+    --brand:      #1B365D;
+    --brand-tint: #EEF2F7;
+    --border:     #e8e6dc;
+    --border-soft:#e5e3d8;
+    --bubble-a:   #1B365D;
+    --bubble-a-bg:#EEF2F7;
+    --bubble-b:   #3d6b4f;
+    --bubble-b-bg:#eef5f0;
+
+    --serif: "TsangerJinKai02", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", Georgia, serif;
+    --sans:  "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --mono:  "JetBrains Mono", "SF Mono", Consolas, monospace;
+  }
+
+  body {
+    color: var(--near-black);
+    font-family: var(--sans);
+    font-size: 13pt;
+    line-height: 1.55;
+    letter-spacing: 0.3pt;
+    background: var(--parchment);
+    overflow: hidden;
+  }
+
+  /* ===== Slide Container ===== */
+  .slide-deck {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .slide {
+    width: 280mm;
+    height: 158mm;
+    padding: 16mm 20mm;
+    background: var(--parchment);
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease;
+  }
+  .slide.active { opacity: 1; visibility: visible; }
+  .slide:last-child { break-after: auto; }
+
+  @media (max-width: 1200px) {
+    .slide {
+      width: 100vw;
+      height: 100vh;
+      padding: 8vw 6vw;
+    }
+  }
+
+  /* ===== Kami Typography ===== */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 9.5pt;
+    letter-spacing: 2pt;
+    text-transform: uppercase;
+    color: var(--stone);
+    margin-bottom: 2pt;
+  }
+
+  .page-num {
+    position: absolute;
+    bottom: 10mm;
+    right: 20mm;
+    font-family: var(--mono);
+    font-size: 9pt;
+    color: var(--stone);
+    letter-spacing: 0.5pt;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .footer-mark {
+    position: absolute;
+    bottom: 10mm;
+    left: 20mm;
+    font-family: var(--mono);
+    font-size: 9pt;
+    color: var(--stone);
+    letter-spacing: 1.5pt;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: 24pt;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.3pt;
+    color: var(--near-black);
+    margin-bottom: 8pt;
+  }
+
+  h3 {
+    font-family: var(--serif);
+    font-size: 15pt;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: 0.3pt;
+    color: var(--brand);
+    margin-bottom: 6pt;
+  }
+
+  .lead {
+    font-family: var(--sans);
+    font-size: 11pt;
+    font-weight: 400;
+    line-height: 1.5;
+    letter-spacing: 0.3pt;
+    color: var(--olive);
+    margin-bottom: 8pt;
+  }
+
+  /* ===== Cover ===== */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .cover h1 {
+    font-family: var(--serif);
+    font-size: 36pt;
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: 0.3pt;
+    color: var(--near-black);
+    margin-bottom: 12pt;
+  }
+  .cover .sub {
+    font-family: var(--sans);
+    font-size: 13pt;
+    line-height: 1.6;
+    letter-spacing: 0.3pt;
+    color: var(--olive);
+    max-width: 52ch;
+    margin-bottom: 28pt;
+  }
+  .cover .meta {
+    font-family: var(--sans);
+    font-size: 10pt;
+    color: var(--stone);
+    letter-spacing: 0.3pt;
+  }
+  .cover .tag-row {
+    display: flex;
+    gap: 8pt;
+    margin-top: 18pt;
+  }
+  .cover .tag {
+    background: var(--brand-tint);
+    color: var(--brand);
+    font-size: 9pt;
+    font-weight: 600;
+    padding: 2pt 8pt;
+    border-radius: 3pt;
+    letter-spacing: 0.3pt;
+  }
+
+  /* ===== Chat Bubbles ===== */
+  .chat-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10pt;
+    padding: 4pt 0;
+  }
+
+  .bubble-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8pt;
+  }
+  .bubble-row.a { flex-direction: row; }
+  .bubble-row.b { flex-direction: row-reverse; }
+
+  .bubble-avatar {
+    width: 28pt;
+    height: 28pt;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 10pt;
+    font-weight: 500;
+    letter-spacing: 0;
+    flex-shrink: 0;
+  }
+  .bubble-row.a .bubble-avatar { background: var(--bubble-a); color: #fff; }
+  .bubble-row.b .bubble-avatar { background: var(--bubble-b); color: #fff; }
+
+  .bubble {
+    max-width: 75%;
+    padding: 9pt 14pt;
+    border-radius: 6pt;
+    font-family: var(--sans);
+    font-size: 10.5pt;
+    line-height: 1.55;
+    letter-spacing: 0.2pt;
+  }
+  .bubble-row.a .bubble {
+    background: var(--bubble-a-bg);
+    color: var(--bubble-a);
+    border-bottom-left-radius: 2pt;
+  }
+  .bubble-row.b .bubble {
+    background: var(--bubble-b-bg);
+    color: var(--bubble-b);
+    border-bottom-right-radius: 2pt;
+  }
+
+  .bubble-label {
+    font-family: var(--mono);
+    font-size: 7.5pt;
+    font-weight: 500;
+    letter-spacing: 1pt;
+    text-transform: uppercase;
+    margin-bottom: 3pt;
+    opacity: 0.6;
+  }
+
+  .hl {
+    color: var(--brand);
+    font-weight: 500;
+  }
+
+  .bubble-row.b .hl {
+    color: var(--bubble-b);
+  }
+
+  /* ===== Tips Grid ===== */
+  .tips-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16pt;
+    flex: 1;
+    align-content: center;
+  }
+
+  .tip-card {
+    background: var(--ivory);
+    border: 0.5pt solid var(--border);
+    border-radius: 8pt;
+    padding: 16pt 14pt;
+    display: flex;
+    flex-direction: column;
+  }
+  .tip-card .tip-icon {
+    font-size: 22pt;
+    margin-bottom: 6pt;
+    line-height: 1;
+  }
+  .tip-card .tip-title {
+    font-family: var(--serif);
+    font-size: 12pt;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: 0.3pt;
+    color: var(--near-black);
+    margin-bottom: 6pt;
+  }
+  .tip-card .tip-desc {
+    font-size: 9.5pt;
+    line-height: 1.5;
+    letter-spacing: 0.2pt;
+    color: var(--dark-warm);
+    margin-bottom: 8pt;
+  }
+  .tip-card .tip-example {
+    font-family: var(--mono);
+    font-size: 8.5pt;
+    line-height: 1.5;
+    letter-spacing: 0;
+    color: var(--brand);
+    background: var(--brand-tint);
+    padding: 5pt 8pt;
+    border-radius: 4pt;
+    margin-top: auto;
+  }
+
+  /* ===== Closing ===== */
+  .closing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .closing h1 {
+    font-family: var(--serif);
+    font-size: 32pt;
+    font-weight: 500;
+    line-height: 1.15;
+    color: var(--near-black);
+    margin-bottom: 10pt;
+  }
+  .closing .sub {
+    font-size: 12pt;
+    line-height: 1.6;
+    color: var(--olive);
+    max-width: 44ch;
+  }
+  .closing .brand-line {
+    margin-top: 20pt;
+    font-family: var(--mono);
+    font-size: 9pt;
+    letter-spacing: 1.5pt;
+    color: var(--stone);
+  }
+
+  /* ===== Navigation ===== */
+  .progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3pt;
+    background: var(--brand);
+    transition: width 0.3s;
+    z-index: 1000;
+  }
+
+  .nav-controls {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 1000;
+    background: var(--ivory);
+    border: 0.5pt solid var(--border);
+    border-radius: 24pt;
+    padding: 6pt 18pt;
+    box-shadow: 0 2pt 12pt rgba(0,0,0,0.06);
+  }
+
+  .nav-btn {
+    background: var(--brand);
+    border: none;
+    color: #fff;
+    width: 30pt;
+    height: 30pt;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 13pt;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .nav-btn:hover { background: #2D5A8A; }
+
+  .slide-counter {
+    font-family: var(--mono);
+    color: var(--stone);
+    font-size: 9pt;
+    letter-spacing: 0.5pt;
+  }
+
+  @media print {
+    .nav-controls, .progress-bar { display: none; }
+    .slide { opacity: 1 !important; visibility: visible !important; position: static; break-after: page; }
+    .slide:last-child { break-after: auto; }
+  }
+
+  @media (max-width: 768px) {
+    .nav-controls { bottom: 12px; padding: 5pt 14pt; gap: 10px; }
+    .tips-grid { grid-template-columns: 1fr; gap: 10pt; }
+    .bubble { max-width: 85%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<div class="slide-deck">
+
+<!-- 01 · 封面 -->
+<section class="slide cover active">
+  <h1>英文口语考试<br>对话练习指南</h1>
+  <div class="sub">一人抛出问题或观点，另一人补充或表达不同意见。<br>体现「交流感」，是口语考试拿高分的关键。</div>
+  <div class="tag-row">
+    <span class="tag">TOPIC 1 &middot; AI</span>
+    <span class="tag">TOPIC 2 &middot; Aerospace</span>
+    <span class="tag">TOPIC 3 &middot; Culture</span>
+  </div>
+  <div class="meta">口语考试 &middot; 对话练习 &middot; 2026</div>
+</section>
+
+<!-- 02 · Topic 1: AI -->
+<section class="slide">
+  <span class="eyebrow">Topic 1 &middot; Artificial Intelligence</span>
+  <h2>AI 对学习的影响</h2>
+  <p class="lead">Impact on Learning</p>
+
+  <div class="chat-wrap">
+    <div class="bubble-row a">
+      <div class="bubble-avatar">A</div>
+      <div class="bubble">
+        <div class="bubble-label">Student A</div>
+        Have you noticed that almost everyone is using AI tools like ChatGPT for their assignments lately? <span class="hl">What's your take on this?</span>
+      </div>
+    </div>
+    <div class="bubble-row b">
+      <div class="bubble-avatar">B</div>
+      <div class="bubble">
+        <div class="bubble-label">Student B</div>
+        Well, I think it's <span class="hl">a double-edged sword</span>. On one hand, it's super efficient for gathering information. But on the other hand, it might make students lazy.
+      </div>
+    </div>
+    <div class="bubble-row a">
+      <div class="bubble-avatar">A</div>
+      <div class="bubble">
+        <div class="bubble-label">Student A</div>
+        Exactly! If we rely on AI too much, we might <span class="hl">lose our ability to think critically</span>.
+      </div>
+    </div>
+    <div class="bubble-row b">
+      <div class="bubble-avatar">B</div>
+      <div class="bubble">
+        <div class="bubble-label">Student B</div>
+        True. So I guess the key is to use it as <span class="hl">an assistant, not a replacement</span> for our own brains.
+      </div>
+    </div>
+  </div>
+
+  <div class="page-num">02</div>
+  <div class="footer-mark">ORAL EXAM PRACTICE</div>
+</section>
+
+<!-- 03 · Topic 2: Aerospace -->
+<section class="slide">
+  <span class="eyebrow">Topic 2 &middot; Aerospace</span>
+  <h2>探索太空的意义</h2>
+  <p class="lead">Significance of Space Exploration</p>
+
+  <div class="chat-wrap">
+    <div class="bubble-row a">
+      <div class="bubble-avatar">A</div>
+      <div class="bubble">
+        <div class="bubble-label">Student A</div>
+        China has made amazing progress in space exploration recently, like the moon landing missions. <span class="hl">Do you think it's worth the huge cost?</span>
+      </div>
+    </div>
+    <div class="bubble-row b">
+      <div class="bubble-avatar">B</div>
+      <div class="bubble">
+        <div class="bubble-label">Student B</div>
+        Definitely! It's not just about planting a flag; it's about <span class="hl">pushing the boundaries</span> of human knowledge and developing new technologies.
+      </div>
+    </div>
+    <div class="bubble-row a">
+      <div class="bubble-avatar">A</div>
+      <div class="bubble">
+        <div class="bubble-label">Student A</div>
+        I agree, but some people say we should spend that money on <span class="hl">solving problems on Earth</span> first, like poverty or climate change.
+      </div>
+    </div>
+    <div class="bubble-row b">
+      <div class="bubble-avatar">B</div>
+      <div class="bubble">
+        <div class="bubble-label">Student B</div>
+        I see your point. However, space tech often helps us solve Earth's problems too, like <span class="hl">satellite communication</span> and weather forecasting.
+      </div>
+    </div>
+  </div>
+
+  <div class="page-num">03</div>
+  <div class="footer-mark">ORAL EXAM PRACTICE</div>
+</section>
+
+<!-- 04 · Topic 3: Traditional Culture -->
+<section class="slide">
+  <span class="eyebrow">Topic 3 &middot; Traditional Culture</span>
+  <h2>年轻人与传统文化的结合</h2>
+  <p class="lead">Youth Meets Tradition</p>
+
+  <div class="chat-wrap">
+    <div class="bubble-row a">
+      <div class="bubble-avatar">A</div>
+      <div class="bubble">
+        <div class="bubble-label">Student A</div>
+        Nowadays, many young people are getting interested in "Hanfu" or traditional crafts. <span class="hl">Do you think traditional culture is making a comeback?</span>
+      </div>
+    </div>
+    <div class="bubble-row b">
+      <div class="bubble-avatar">B</div>
+      <div class="bubble">
+        <div class="bubble-label">Student B</div>
+        For sure! <span class="hl">Social media plays a big role</span>. Short videos make traditional culture look "cool" and modern.
+      </div>
+    </div>
+    <div class="bubble-row a">
+      <div class="bubble-avatar">A</div>
+      <div class="bubble">
+        <div class="bubble-label">Student A</div>
+        That's a good point. But do you think we should keep the traditions exactly as they were, or <span class="hl">should we change them to fit modern life</span>?
+      </div>
+    </div>
+    <div class="bubble-row b">
+      <div class="bubble-avatar">B</div>
+      <div class="bubble">
+        <div class="bubble-label">Student B</div>
+        I believe we should <span class="hl">modernize them</span>. If traditions don't evolve, they might be forgotten by the next generation.
+      </div>
+    </div>
+  </div>
+
+  <div class="page-num">04</div>
+  <div class="footer-mark">ORAL EXAM PRACTICE</div>
+</section>
+
+<!-- 05 · Tips -->
+<section class="slide">
+  <span class="eyebrow">Tips &middot; Exam Day</span>
+  <h2>考试小贴士</h2>
+  <p class="lead">三个让表现更自然的实用技巧</p>
+
+  <div class="tips-grid">
+    <div class="tip-card">
+      <div class="tip-icon">&#128172;</div>
+      <div class="tip-title">不要背稿子</div>
+      <div class="tip-desc">老师最忌讳听起来像在背书。对话中多加点自然过渡语</div>
+      <div class="tip-example">"Well..." "You know..."<br>"That's a good point"</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">&#128064;</div>
+      <div class="tip-title">眼神交流</div>
+      <div class="tip-desc">看着搭档的眼睛，而不是盯着地板或天花板，体现沟通意图</div>
+      <div class="tip-example">Eye Contact<br>= Communication</div>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">&#129300;</div>
+      <div class="tip-title">万能补救</div>
+      <div class="tip-desc">如果突然卡壳，微笑着用这些短语缓冲，比直接停下来好得多</div>
+      <div class="tip-example">"Wait, how should I put this..."<br>"Let me rephrase that..."</div>
+    </div>
+  </div>
+
+  <div class="page-num">05</div>
+  <div class="footer-mark">ORAL EXAM PRACTICE</div>
+</section>
+
+<!-- 06 · Closing -->
+<section class="slide closing">
+  <h1>Good Luck!</h1>
+  <div class="sub">Practice makes perfect.<br>记住：<strong>交流感 &gt; 完美语法</strong></div>
+  <div class="brand-line">ORAL EXAM PRACTICE &middot; 2026</div>
+</section>
+
+</div><!-- /.slide-deck -->
+
+<!-- Navigation -->
+<div class="nav-controls">
+  <button class="nav-btn" onclick="prevSlide()">&#8592;</button>
+  <span class="slide-counter"><span id="current">1</span> / <span id="total">6</span></span>
+  <button class="nav-btn" onclick="nextSlide()">&#8594;</button>
+</div>
+
+<script>
+  let current = 1;
+  const total = document.querySelectorAll('.slide').length;
+  document.getElementById('total').textContent = total;
+
+  function showSlide(n) {
+    if (n < 1) n = 1;
+    if (n > total) n = total;
+    current = n;
+    document.querySelectorAll('.slide').forEach((s, i) => {
+      s.classList.toggle('active', i === n - 1);
+    });
+    document.getElementById('current').textContent = n;
+    document.getElementById('progressBar').style.width = (n / total * 100) + '%';
+  }
+
+  function nextSlide() { showSlide(current + 1); }
+  function prevSlide() { showSlide(current - 1); }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
+  });
+
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) { diff > 0 ? nextSlide() : prevSlide(); }
+  });
+
+  showSlide(1);
+</script>
+</body>
+</html>

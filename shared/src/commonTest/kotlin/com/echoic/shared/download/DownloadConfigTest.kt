@@ -7,14 +7,21 @@ import kotlin.test.assertTrue
 
 class DownloadConfigTest {
     @Test
-    fun buildsKokoroFileUrlsFromMirrorRepositoryPage() {
-        val urls = DownloadConfig.getFallbackDownloadFiles(
+    fun buildsKokoroReleaseArchiveFallback() {
+        val files = DownloadConfig.getFallbackDownloadFiles(
             provider = LocalTTSProvider.KOKORO,
             repositoryUrl = "https://hf-mirror.com/hexgrad/Kokoro-82M",
-        ).map { it.url }
+        )
 
-        assertTrue("https://hf-mirror.com/hexgrad/Kokoro-82M/resolve/main/kokoro-v1_0.pth" in urls)
-        assertTrue("https://hf-mirror.com/hexgrad/Kokoro-82M/resolve/main/voices/zf_xiaobei.pt" in urls)
+        assertEquals(
+            listOf(
+                DownloadFile(
+                    relativePath = "kokoro-multi-lang-v1_0.tar.gz",
+                    url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.gz",
+                )
+            ),
+            files,
+        )
     }
 
     @Test

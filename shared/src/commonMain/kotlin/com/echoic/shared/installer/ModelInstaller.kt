@@ -4,12 +4,12 @@ import com.echoic.shared.download.DownloadConfig
 import com.echoic.shared.download.DownloadManager
 import com.echoic.shared.download.DownloadSource
 import com.echoic.shared.download.DownloadState
+import com.echoic.shared.model.LocalModelInstallRepository
 import com.echoic.shared.model.LocalModelManager
 import com.echoic.shared.model.LocalTTSProvider
 import com.echoic.shared.platform.PlatformFile
 import com.echoic.shared.platform.PlatformInputStream
 import com.echoic.shared.platform.PlatformZipInputStream
-import com.echoic.shared.platform.platformHomeDirectory
 import com.echoic.shared.platform.platformFileInputStream
 import com.echoic.shared.platform.platformFileOutputStream
 import com.echoic.shared.platform.platformGzipInputStream
@@ -59,6 +59,7 @@ sealed class InstallState {
 class ModelInstaller(
     private val downloadManager: DownloadManager,
     private val localModelManager: LocalModelManager,
+    private val repository: LocalModelInstallRepository = LocalModelInstallRepository(),
 ) {
     suspend fun installModel(
         provider: LocalTTSProvider,
@@ -215,7 +216,7 @@ class ModelInstaller(
             return
         }
 
-        val installedSize = calculateDirectorySize(PlatformFile(finalPath))
+        val installedSize = repository.sizeOf(PlatformFile(finalPath))
         localModelManager.markAsInstalled(provider, installedSize)
         onStateChange(InstallState.Completed(finalPath))
     }
@@ -242,21 +243,15 @@ class ModelInstaller(
     }
 
     fun isInstalled(provider: LocalTTSProvider): Boolean {
-        val installDir = PlatformFile(getInstallPath(provider))
-        if (!installDir.exists() || !installDir.isDirectory) return false
-
-        val files = installDir.listFiles()
-        return files != null && files.isNotEmpty()
+        return repository.isInstalled(provider)
     }
 
     fun getInstallPath(provider: LocalTTSProvider): String {
-        val home = platformHomeDirectory()
-        return "$home/.echoic/models/${provider.name.lowercase()}"
+        return repository.modelPath(provider)
     }
 
     private fun getDownloadTempPath(provider: LocalTTSProvider): String {
-        val home = platformHomeDirectory()
-        return "$home/.echoic/downloads/${provider.name.lowercase()}"
+        return repository.downloadPath(provider)
     }
 
     fun getDownloadSources(provider: LocalTTSProvider): List<DownloadSource> {
@@ -485,7 +480,7 @@ class ModelInstaller(
                     throw Exception("模型目录为空: $modelPath")
                 }
 
-                val totalSize = calculateDirectorySize(path)
+                val totalSize = repository.sizeOf(path)
                 if (totalSize < 1024) {
                     throw Exception("模型文件过小 (${totalSize} bytes)，可能下载不完整")
                 }
@@ -495,21 +490,6 @@ class ModelInstaller(
                 }
             }
         }
-    }
-
-    private fun calculateDirectorySize(directory: PlatformFile): Long {
-        if (!directory.exists()) return 0L
-        if (directory.isFile) return directory.length()
-
-        var size = 0L
-        directory.listFiles()?.forEach { file ->
-            size += if (file.isDirectory) {
-                calculateDirectorySize(file)
-            } else {
-                file.length()
-            }
-        }
-        return size
     }
 
     private suspend fun cleanDirectory(directory: PlatformFile) {

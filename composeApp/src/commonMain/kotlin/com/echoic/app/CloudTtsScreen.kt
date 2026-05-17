@@ -21,7 +21,12 @@ import com.echoic.shared.config.AppConfig
 import com.echoic.shared.config.AppConfigData
 import com.echoic.shared.download.DownloadManager
 import com.echoic.shared.engine.CloudTTSEngine
+import com.echoic.shared.engine.EngineCloudSynthesisGateway
+import com.echoic.shared.engine.EngineLocalSynthesisGateway
 import com.echoic.shared.engine.LocalTTSEngine
+import com.echoic.shared.engine.SynthesisRequest
+import com.echoic.shared.engine.SynthesisSelection
+import com.echoic.shared.engine.SynthesisSession
 import com.echoic.shared.engine.TTSError
 import com.echoic.shared.installer.InstallState
 import com.echoic.shared.installer.ModelInstaller
@@ -52,6 +57,12 @@ fun CloudTtsScreen(
     val downloadManager = remember { DownloadManager() }
     val localModelManager = remember { LocalModelManager() }
     val installer = remember { ModelInstaller(downloadManager, localModelManager) }
+    val synthesisSession = remember(engine, localEngine) {
+        SynthesisSession(
+            cloudGateway = EngineCloudSynthesisGateway(engine),
+            localGateway = localEngine?.let { EngineLocalSynthesisGateway(it) },
+        )
+    }
     var inputText by remember { mutableStateOf("") }
     var modelSelection by remember { mutableStateOf<ModelSelection>(ModelSelection.Cloud(TTSProvider.FISH_AUDIO)) }
     var selectedVoice by remember { mutableStateOf(Voice.FISH_DEFAULT) }
@@ -328,7 +339,7 @@ fun CloudTtsScreen(
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     Text(strings.synthesizing, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     TextButton(onClick = {
-                        engine.cancel(); localEngine?.cancel(); isSynthesizing = false
+                        synthesisSession.cancel(); isSynthesizing = false
                     }) { Text(strings.cancel) }
                 }
             } else {
@@ -338,25 +349,23 @@ fun CloudTtsScreen(
                             isSynthesizing = true
                             errorMessage = null
                             try {
-                                when (val sel = modelSelection) {
+                                val request = when (val sel = modelSelection) {
                                     is ModelSelection.Cloud -> {
-                                        audioData = engine.synthesize(
-                                            inputText,
-                                            sel.provider.availableModels.first(),
-                                            selectedVoice,
+                                        SynthesisRequest(
+                                            text = inputText,
+                                            selection = SynthesisSelection.Cloud(sel.provider, selectedVoice),
                                         )
-                                        audioData?.let { audioPlayer.play(it, AudioFormat.MP3) }
                                     }
                                     is ModelSelection.Local -> {
-                                        val result = localEngine!!.synthesize(
+                                        SynthesisRequest(
                                             text = inputText,
-                                            provider = sel.provider,
-                                            format = AudioFormat.WAV,
+                                            selection = SynthesisSelection.Local(sel.provider),
                                         )
-                                        audioData = result.audioData
-                                        audioPlayer.play(result.audioData, AudioFormat.WAV)
                                     }
                                 }
+                                val result = synthesisSession.synthesize(request)
+                                audioData = result.audioData
+                                audioPlayer.play(result.audioData, result.format)
                             } catch (e: TTSError) {
                                 errorMessage = e.message
                             } catch (e: Exception) {
@@ -725,4 +734,3 @@ private fun AudioPlayerBar(audioPlayer: AudioPlayer) {
         }
     }
 }
-

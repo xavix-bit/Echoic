@@ -21,8 +21,12 @@ import com.echoic.shared.audio.AudioPlayer
 import com.echoic.shared.config.AppConfig
 import com.echoic.shared.config.AppConfigData
 import com.echoic.shared.engine.CloudTTSEngine
+import com.echoic.shared.engine.EngineCloudSynthesisGateway
+import com.echoic.shared.engine.EngineLocalSynthesisGateway
 import com.echoic.shared.engine.LocalTTSEngine
-import com.echoic.shared.engine.LocalSynthesisResult
+import com.echoic.shared.engine.SynthesisRequest
+import com.echoic.shared.engine.SynthesisSelection
+import com.echoic.shared.engine.SynthesisSession
 import com.echoic.shared.engine.TTSError
 import com.echoic.shared.model.AudioFormat
 import com.echoic.shared.model.LocalTTSProvider
@@ -44,6 +48,12 @@ fun GenerateScreen(
 ) {
     val scope = rememberCoroutineScope()
     val strings = LocalStrings.current
+    val synthesisSession = remember(engine, localEngine) {
+        SynthesisSession(
+            cloudGateway = EngineCloudSynthesisGateway(engine),
+            localGateway = localEngine?.let { EngineLocalSynthesisGateway(it) },
+        )
+    }
 
     val defaultCloud = config.getDefaultCloudProvider()
     val defaultLocal = config.getDefaultLocalProvider()
@@ -244,8 +254,7 @@ fun GenerateScreen(
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     Text(strings.synthesizing, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     TextButton(onClick = {
-                        engine.cancel()
-                        localEngine?.cancel()
+                        synthesisSession.cancel()
                         isSynthesizing = false
                     }) { Text(strings.cancel) }
                 }
@@ -256,24 +265,24 @@ fun GenerateScreen(
                             isSynthesizing = true
                             errorMessage = null
                             try {
-                                when (mode) {
+                                val request = when (mode) {
                                     SynthesisMode.CLOUD -> {
                                         val provider = cloudProvider!!
-                                        val model = provider.availableModels.first()
-                                        val voice = selectedVoice ?: provider.availableVoices.first()
-                                        audioData = engine.synthesize(inputText, model, voice)
-                                        audioPlayer.play(audioData!!, AudioFormat.MP3)
+                                        SynthesisRequest(
+                                            text = inputText,
+                                            selection = SynthesisSelection.Cloud(provider, selectedVoice),
+                                        )
                                     }
                                     SynthesisMode.LOCAL -> {
-                                        val result: LocalSynthesisResult = localEngine!!.synthesize(
+                                        SynthesisRequest(
                                             text = inputText,
-                                            provider = localProvider!!,
-                                            format = AudioFormat.WAV,
+                                            selection = SynthesisSelection.Local(localProvider!!),
                                         )
-                                        audioData = result.audioData
-                                        audioPlayer.play(result.audioData, AudioFormat.WAV)
                                     }
                                 }
+                                val result = synthesisSession.synthesize(request)
+                                audioData = result.audioData
+                                audioPlayer.play(result.audioData, result.format)
                             } catch (e: TTSError) {
                                 errorMessage = e.message
                             } catch (e: Exception) {

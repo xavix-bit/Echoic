@@ -6,8 +6,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import com.echoic.shared.platform.PlatformFile
-import com.echoic.shared.platform.platformHomeDirectory
 import com.echoic.shared.platform.platformCurrentTimeMillis
 
 /**
@@ -27,7 +25,9 @@ data class ModelInstallationStatus(
  * Manager for local TTS models.
  * Handles model installation, uninstallation, and cache management.
  */
-class LocalModelManager {
+class LocalModelManager(
+    private val repository: LocalModelInstallRepository = LocalModelInstallRepository(),
+) {
     private val _modelStatuses = MutableStateFlow<Map<LocalTTSProvider, ModelInstallationStatus>>(emptyMap())
     val modelStatuses: StateFlow<Map<LocalTTSProvider, ModelInstallationStatus>> = _modelStatuses.asStateFlow()
 
@@ -56,25 +56,21 @@ class LocalModelManager {
      * 获取模型的存储路径
      */
     fun getModelPath(provider: LocalTTSProvider): String {
-        val home = platformHomeDirectory()
-        return "$home/.echoic/models/${provider.name.lowercase()}"
+        return repository.modelPath(provider)
     }
 
     /**
      * 检查模型是否已安装（基于文件系统）
      */
     fun isModelInstalled(provider: LocalTTSProvider): Boolean {
-        return isModelInstalledOnDisk(provider)
+        return repository.isInstalled(provider)
     }
 
     /**
      * 检查文件系统中是否存在模型
      */
     private fun isModelInstalledOnDisk(provider: LocalTTSProvider): Boolean {
-        val modelDir = PlatformFile(getModelPath(provider))
-        if (!modelDir.exists() || !modelDir.isDirectory) return false
-        val files = modelDir.listFiles()
-        return files != null && files.isNotEmpty()
+        return repository.isInstalled(provider)
     }
 
     /**
@@ -88,26 +84,7 @@ class LocalModelManager {
      * 从文件系统计算模型大小
      */
     private fun getModelSizeOnDisk(provider: LocalTTSProvider): Long {
-        val modelDir = PlatformFile(getModelPath(provider))
-        return calculateDirectorySize(modelDir)
-    }
-
-    /**
-     * 计算目录总大小
-     */
-    private fun calculateDirectorySize(directory: PlatformFile): Long {
-        if (!directory.exists()) return 0L
-        if (directory.isFile) return directory.length()
-
-        var size = 0L
-        directory.listFiles()?.forEach { file ->
-            size += if (file.isDirectory) {
-                calculateDirectorySize(file)
-            } else {
-                file.length()
-            }
-        }
-        return size
+        return repository.installedSize(provider)
     }
 
     /**
@@ -166,10 +143,7 @@ class LocalModelManager {
 
         try {
             withContext(Dispatchers.IO) {
-                val modelDir = PlatformFile(getModelPath(provider))
-                if (modelDir.exists()) {
-                    modelDir.deleteRecursively()
-                }
+                repository.uninstall(provider)
             }
 
             updateStatus(provider) {
@@ -185,11 +159,7 @@ class LocalModelManager {
      */
     suspend fun clearCache(provider: LocalTTSProvider) {
         withContext(Dispatchers.IO) {
-            val home = platformHomeDirectory()
-            val cacheDir = PlatformFile("$home/.echoic/cache/${provider.name.lowercase()}")
-            if (cacheDir.exists()) {
-                cacheDir.deleteRecursively()
-            }
+            repository.clearCache(provider)
         }
     }
 
