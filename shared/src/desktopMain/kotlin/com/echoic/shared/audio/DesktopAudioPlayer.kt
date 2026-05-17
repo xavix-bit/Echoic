@@ -21,6 +21,7 @@ actual class AudioPlayer actual constructor() {
     private var clip: Clip? = null
     private var line: SourceDataLine? = null
     private var stream: javax.sound.sampled.AudioInputStream? = null
+    private var clipCompleted = false
 
     private val _isPlaying = MutableStateFlow(false)
     actual val isPlaying: StateFlow<Boolean> = _isPlaying
@@ -63,14 +64,21 @@ actual class AudioPlayer actual constructor() {
         clip.addLineListener { event ->
             if (event.type == LineEvent.Type.STOP && !clip.isRunning) {
                 _isPlaying.value = false
-                _currentTime.value = 0.0
                 stopTimer()
+                if (isClipAtEnd(clip)) {
+                    clipCompleted = true
+                    clip.microsecondPosition = 0
+                    _currentTime.value = 0.0
+                } else {
+                    _currentTime.value = clip.microsecondPosition / 1_000_000.0
+                }
             }
         }
         clip.start()
 
         this.clip = clip
         this.stream = audioStream
+        clipCompleted = false
         _duration.value = clip.microsecondLength / 1_000_000.0
     }
 
@@ -128,10 +136,22 @@ actual class AudioPlayer actual constructor() {
     }
 
     actual fun resume() {
-        clip?.start()
-        line?.start()
-        _isPlaying.value = true
-        startTimer()
+        clip?.let { c ->
+            if (clipCompleted || isClipAtEnd(c)) {
+                c.microsecondPosition = 0
+                _currentTime.value = 0.0
+                clipCompleted = false
+            }
+            c.start()
+            _isPlaying.value = true
+            startTimer()
+            return
+        }
+        line?.let { l ->
+            l.start()
+            _isPlaying.value = true
+            startTimer()
+        }
     }
 
     actual fun stop() {
@@ -149,6 +169,7 @@ actual class AudioPlayer actual constructor() {
         clip = null
         line = null
         stream = null
+        clipCompleted = false
         _isPlaying.value = false
         _currentTime.value = 0.0
     }
@@ -158,6 +179,7 @@ actual class AudioPlayer actual constructor() {
             val microseconds = (positionSeconds * 1_000_000).toLong()
             c.microsecondPosition = microseconds
             _currentTime.value = positionSeconds
+            clipCompleted = isClipAtEnd(c)
         }
     }
 
@@ -186,5 +208,13 @@ actual class AudioPlayer actual constructor() {
     private fun stopTimer() {
         timerThread?.interrupt()
         timerThread = null
+    }
+
+    private fun isClipAtEnd(clip: Clip): Boolean =
+        clip.microsecondLength > 0 &&
+            clip.microsecondPosition >= clip.microsecondLength - END_TOLERANCE_MICROS
+
+    private companion object {
+        const val END_TOLERANCE_MICROS = 20_000L
     }
 }
